@@ -1,0 +1,29 @@
+<!-- @dsCard group="Components" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../tokens.css">
+<style>
+  .wrap{padding:20px;max-width:420px}
+  .search{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--radius-lg);font-size:14px;margin-bottom:8px;background:#fff;box-shadow:var(--shadow-input)}
+  select.cuisine{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--radius-lg);font-size:14px;background:#fff;-webkit-appearance:none;appearance:none;cursor:pointer;margin-bottom:12px;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%235f6368"/></svg>');background-repeat:no-repeat;background-position:right 12px center}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+  .chip{font-size:12.5px;font-weight:var(--fw-semibold);padding:6px 11px;border:1.5px solid var(--line);border-radius:var(--radius-pill);background:#fff;color:var(--muted);cursor:pointer;user-select:none}
+  .chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .views{display:inline-flex;border:1.5px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff}
+  .views button{border:0;background:#fff;padding:8px 16px;font-size:13px;font-weight:var(--fw-semibold);color:var(--muted);cursor:pointer}
+  .views button.on{background:var(--teal);color:#fff}
+  label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 6px}
+</style></head>
+<body><div class="wrap">
+  <input class="search" placeholder="Search a town, postcode or venue…" value="">
+  <select class="cuisine"><option>All cuisines</option><option>Italian</option><option>Café</option><option>Indian</option></select>
+
+  <label>Safety bar (the core toggle — same data, user picks the threshold)</label>
+  <div class="chips">
+    <span class="chip on">Coeliac-safe only</span>
+    <span class="chip">+ Some GF</span>
+    <span class="chip">Any GF option</span>
+  </div>
+
+  <label>View</label>
+  <div class="views"><button class="on">Map</button><button>List</button></div>
+</div></body></html>
