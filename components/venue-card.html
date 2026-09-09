@@ -1,0 +1,53 @@
+<!-- @dsCard group="Components" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../tokens.css">
+<style>
+  .wrap{padding:20px;max-width:420px;background:var(--bg)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px;box-shadow:var(--shadow-card)}
+  .card.sel{box-shadow:inset 3px 0 0 var(--teal),var(--shadow-card);background:#f2f9f8}
+  .title{font-size:15.5px;font-weight:var(--fw-bold);margin:0}
+  .meta{font-size:12px;color:var(--muted);margin:3px 0 8px}
+  .badge{display:inline-block;font-size:11px;font-weight:var(--fw-bold);padding:2px 8px;border-radius:var(--radius-sm)}
+  .badge.t-gold{color:var(--gold);background:var(--gold-bg)}
+  .badge.t-green{color:var(--green);background:var(--green-bg)}
+  .badge.t-blue{color:var(--blue);background:var(--blue-bg)}
+  .hyg{display:inline-block;font-size:10.5px;font-weight:var(--fw-bold);padding:2px 7px;border-radius:var(--radius-sm);color:#fff;margin-left:5px}
+  .hyg.h5{background:#1a7f37}
+  .bbadge{display:inline-block;font-size:11px;font-weight:var(--fw-semibold);padding:2px 7px;border-radius:var(--radius-sm);background:#e6f4ea;color:var(--green);border:1px solid #b8ddc2;margin-left:5px}
+  .signals{margin-top:9px;font-size:12px;border-left:3px solid var(--green);background:var(--green-bg);border-radius:0 var(--radius) var(--radius) 0;padding:8px 11px;color:#20452d}
+  .signals.gold{border-left-color:var(--gold);background:var(--gold-bg);color:#5c4708}
+  .evsrc{display:block;margin-top:4px;font-size:11px;color:#5a6a8a}
+  .links{margin-top:10px;display:flex;gap:6px}
+  .links a{font-size:12px;font-weight:var(--fw-semibold);text-decoration:none;color:var(--teal-dark);border:1px solid var(--line);background:#fff;padding:4px 10px;border-radius:var(--radius-sm)}
+  .links a.book{color:#fff;background:var(--teal);border-color:var(--teal)}
+</style></head>
+<body><div class="wrap">
+
+  <!-- GOLD, selected -->
+  <div class="card sel">
+    <span class="badge t-gold">◆ Accredited</span><span class="hyg h5">5</span>
+    <p class="title" style="margin-top:8px">The Gluten-Free Kitchen</p>
+    <p class="meta">Italian · Deansgate, Manchester · 0.3 mi</p>
+    <div class="signals gold">Coeliac UK accredited kitchen — dedicated GF prep confirmed on the venue's own menu.
+      <span class="evsrc">Source: venue website · verified 4 Sep 2026</span></div>
+    <div class="links"><a class="book" href="#">Book a table</a><a href="#">Menu</a><a href="#">Call</a></div>
+  </div>
+
+  <!-- GREEN -->
+  <div class="card">
+    <span class="badge t-green">✓ Coeliac provision</span><span class="bbadge">Extensive GF</span>
+    <p class="title" style="margin-top:8px">Sage &amp; Stone Bistro</p>
+    <p class="meta">Modern British · Bury · 4.1 mi</p>
+    <div class="signals">Venue states a separate fryer and GF prep area in its own words. Not independently verified.
+      <span class="evsrc">Source: venue website · read 2 Sep 2026</span></div>
+    <div class="links"><a href="#">Menu</a><a href="#">Call</a></div>
+  </div>
+
+  <!-- BLUE -->
+  <div class="card">
+    <span class="badge t-blue">GF options</span>
+    <p class="title" style="margin-top:8px">Corner Coffee Co.</p>
+    <p class="meta">Café · Ruislip · 0.8 mi</p>
+    <div class="signals blue" style="border-left-color:var(--blue);background:var(--blue-bg);color:#1c4d8f">Gluten-free cake and bread listed on the menu. No cross-contamination safeguard stated.</div>
+  </div>
+
+</div></body></html>
