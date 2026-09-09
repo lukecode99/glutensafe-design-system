@@ -1,0 +1,805 @@
+<!-- @dsCard group="Pages" name="Live site (real data)" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>GlutenSafe UK — coeliac-safe places to eat out</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<style>
+  :root{
+    --ink:#10222b; --muted:#5a6b74; --line:#e3ebee; --bg:#f7fafb; --card:#fff;
+    --teal:#0c7c74; --teal-dark:#075b55;
+    --gold:#b8860b; --gold-bg:#fdf6e3; --gold-line:#f0d98a;
+    --green:#1a7f37; --green-bg:#e9f7ee; --green-line:#c4e8d0;
+    --blue:#1f6feb; --blue-bg:#eaf2fe; --blue-line:#cfe0fb;
+    --amber:#8a5a00; --amber-bg:#fff6e5; --amber-line:#f3dca0;
+    --grey:#6b7680; --grey-bg:#f0f2f4; --grey-line:#e2e4e7;
+    --unread:#5b3a9e; --unread-bg:#f5f1fc; --unread-line:#e0d5f4;
+    --unassessed:#6b7280; --unassessed-bg:#f6f7f9; --unassessed-line:#e6e8ec;
+    --red:#c62828;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:1200}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.3px;white-space:nowrap}
+  .logo .shield{width:30px;height:30px;border-radius:8px;background:var(--teal);display:flex;align-items:center;justify-content:center;flex:none}
+  .logo .shield svg{width:18px;height:18px}
+  .logo .uk{color:var(--teal)}
+  .tag{color:var(--muted);font-size:12px;line-height:1.3}
+  .hspace{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .claim{font-size:12.5px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 11px;white-space:nowrap}
+  .signin{font:inherit;font-size:12.5px;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+  .whoami{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .whoami a{color:var(--teal);cursor:pointer;text-decoration:underline}
+  /* Notify-me panel: shown when a search lands on an area we don't fully cover yet. */
+  .notify{border:1.5px solid var(--teal);background:#f2fbfb;border-radius:14px;padding:16px;margin:12px 0}
+  .notify h3{margin:0 0 5px;font-size:15px;color:#0f2f33}
+  .notify p{margin:0 0 11px;font-size:12.5px;color:var(--muted);line-height:1.5}
+  .notify form{display:flex;gap:8px;flex-wrap:wrap}
+  .notify input[type=email]{flex:1;min-width:180px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:14px}
+  .notify button{font:inherit;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:10px;padding:10px 16px;cursor:pointer;white-space:nowrap}
+  .notify button:disabled{opacity:.55;cursor:default}
+  .notify .consent{flex-basis:100%;font-size:11.5px;color:var(--muted);display:flex;align-items:flex-start;gap:6px;margin-top:2px}
+  .notify .ok{font-size:13px;color:var(--green);font-weight:700}
+  .notify .tally{font-size:13px;color:#0f2f33;background:#e6f6f6;border-radius:9px;padding:8px 11px;margin:0 0 10px}
+  .ajwrap{display:flex;flex-wrap:wrap;gap:7px}
+  .areajump{font:inherit;font-size:12.5px;font-weight:600;color:var(--teal)!important;background:#fff!important;border:1.5px solid var(--teal);border-radius:999px;padding:6px 12px;cursor:pointer}
+  .areajump span{color:var(--muted);font-weight:600;font-size:11px}
+  .areajump:hover{background:#eafafa!important}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  /* Free-access gate: a soft sign-in prompt after the first few results. */
+  .gate{border:1.5px dashed var(--teal);background:#f7fbfc;border-radius:14px;padding:18px;margin:14px 0;text-align:center}
+  .gate h3{margin:0 0 6px;font-size:15px;color:#0f2f33}
+  .gate p{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+  .gate button{font:inherit;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:10px;padding:10px 18px;cursor:pointer}
+  /* Sign-in modal */
+  .modal{position:fixed;inset:0;background:rgba(16,34,43,.45);display:none;align-items:center;justify-content:center;z-index:3000;padding:16px}
+  .modal.on{display:flex}
+  .modal .box{background:#fff;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(16,34,43,.3)}
+  .modal h2{margin:0 0 6px;font-size:19px}
+  .modal p{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.5}
+  .modal input[type=email]{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;margin-bottom:10px;box-sizing:border-box}
+  .modal .go{width:100%;font:inherit;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:10px;padding:12px;cursor:pointer;font-size:15px}
+  .modal .go:disabled{opacity:.55}
+  .modal .consent{font-size:11.5px;color:var(--muted);display:flex;align-items:flex-start;gap:7px;margin:12px 0 4px;text-align:left}
+  .modal .x{float:right;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;border:0;background:none}
+  .modal .err{color:#c0392b;font-size:12px;margin:6px 0 0}
+  /* List ⇄ Split ⇄ Map segmented toggle (Luke 23-Aug). Split is desktop-only. */
+  .views{display:flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .views button{border:0;background:none;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);padding:7px 12px;cursor:pointer}
+  .views button.on{background:var(--teal);color:#fff}
+  .banner{background:#fff;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);padding:7px 16px;line-height:1.45}
+  .banner b{color:var(--ink)}
+  .banner details{display:inline}
+  .banner summary{display:inline;cursor:pointer;color:var(--teal);font-weight:700}
+  .banner .how{margin-top:6px}
+  .wrap{display:flex;height:calc(100vh - 88px)}
+  #list{width:430px;min-width:430px;overflow-y:auto;border-right:1px solid var(--line);background:var(--bg)}
+  #map{flex:1}
+  /* view modes: v-split (desktop default) side-by-side; v-list list only, centred; v-map map only */
+  body.v-list #map{display:none}
+  body.v-list #list{width:100%;min-width:0;border-right:0}
+  body.v-list #list .inner{max-width:680px;margin:0 auto}
+  body.v-map #list{display:none}
+  .hero{padding:20px 16px 4px}
+  .hero h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
+  .hero p{margin:5px 0 0;font-size:13px;color:var(--muted)}
+  .filters{padding:12px 16px;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--line)}
+  .filters .row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px}
+  .search{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;font-size:14px;margin-bottom:8px;background:#fff;box-shadow:0 2px 8px rgba(16,34,43,.04)}
+  .search:focus{outline:none;border-color:var(--teal)}
+  select.cuisine{background:#fff;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%235f6368"/></svg>');background-repeat:no-repeat;background-position:right 12px center}
+  .hyg{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:5px;color:#fff}
+  .hyg.h5{background:#1a7f37}.hyg.h4{background:#4c9a2a}.hyg.h3{background:#c9a227}.hyg.h2,.hyg.h1,.hyg.h0{background:#c62828}
+  .hyg.hx{background:#9aa0a6}
+  .card.sel{box-shadow:inset 3px 0 0 var(--teal),0 1px 6px rgba(16,34,43,.06);background:#f2f9f8}
+  .accred{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:5px;color:#7a5b00;background:var(--gold-bg);border:1px solid var(--gold-line)}
+  .meta{color:var(--muted);font-size:11.5px;margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .meta .dist{color:var(--teal-dark);font-weight:700}
+  .ftitle{width:100%;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:2px 0 -2px}
+  .radius{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .radius .rlbl{font-size:12px;font-weight:600;color:var(--muted)}
+  .rchip{font-size:12px;font-weight:600;padding:5px 9px;border:1.5px solid var(--line);border-radius:16px;background:#fff;color:var(--muted);cursor:pointer;user-select:none}
+  .rchip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .rnum{width:52px;font:inherit;font-size:12px;padding:4px 7px;border:1.5px solid var(--line);border-radius:16px;text-align:center}
+  .chip{font-size:12.5px;font-weight:600;padding:6px 11px;border:1.5px solid var(--line);border-radius:20px;background:#fff;color:var(--muted);cursor:pointer;user-select:none}
+  .chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .chip .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .count{font-size:12px;color:var(--muted);padding:10px 16px 0}
+  .count b{color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;margin:10px 12px;padding:14px 15px;cursor:pointer;box-shadow:0 1px 6px rgba(16,34,43,.04)}
+  .card:hover{border-color:#cfdde2}
+  /* Ambiguous-place picker ("which Westfield did you mean?") */
+  .places{padding:6px 12px}
+  .placeopt{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;margin:8px 0;padding:13px 15px;cursor:pointer;font:inherit;box-shadow:0 1px 6px rgba(16,34,43,.04)}
+  .placeopt:hover{border-color:var(--teal);background:#f2fbfb}
+  .placeopt .pl{font-weight:600;font-size:15px;letter-spacing:-.2px}
+  .placeopt .pc{color:#5b7078;font-size:13px;white-space:nowrap}
+  .card h3{margin:0 0 3px;font-size:15.5px;letter-spacing:-.2px}
+  /* Plain-English tier badge — Direction A tinted pill, not a solid block */
+  .badge{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;padding:3px 9px;border-radius:999px;vertical-align:middle}
+  .badge.t-gold{color:var(--gold);background:var(--gold-bg)}
+  .badge.t-green{color:var(--green);background:var(--green-bg)}
+  .badge.t-blue{color:var(--blue);background:var(--blue-bg)}
+  .badge.t-amber{color:var(--amber);background:var(--amber-bg)}
+  .badge.t-grey{color:var(--grey);background:var(--grey-bg)}
+  .badge.t-unread{color:var(--unread);background:var(--unread-bg)}
+  .badge.t-unassessed{color:var(--unassessed);background:var(--unassessed-bg)}
+  .bbadge{display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;vertical-align:middle;background:#eef3ee;color:#1a7f37;border:1px solid #cfe0cf}
+  .bbadge.b-extensive{background:#e6f4ea;color:#1a7f37;border-color:#b8ddc2}
+  .bbadge.b-several{background:#eef3ee;color:#2b7a3f}
+  .bbadge.b-limited{background:#f4f2ec;color:#7a6a2b;border-color:#e2dcc9}
+  .cuisine{color:var(--muted);font-size:12.5px;margin:2px 0 7px}
+  .cuisine .price{color:var(--green);font-weight:700;margin-left:7px}
+  /* Evidence box — the differentiator, styled Direction-A style: left accent bar + tint */
+  .signals{margin-top:9px;font-size:12px;border-left:3px solid var(--green);background:var(--green-bg);border-radius:0 10px 10px 0;padding:8px 11px;color:#20452d}
+  .signals.gold{border-left-color:var(--gold);background:var(--gold-bg);color:#5c4708}
+  .signals.blue{border-left-color:var(--blue);background:var(--blue-bg);color:#1c4d8f}
+  .signals.amber{border-left-color:#e5a100;background:var(--amber-bg);color:var(--amber)}
+  .signals.grey{border-left-color:#9aa0a6;background:var(--grey-bg);color:#4c545c}
+  .signals.unread{border-left-color:#8a63d2;background:var(--unread-bg);color:var(--unread)}
+  .signals.unassessed{border-left-color:#c0c4cc;background:var(--unassessed-bg);color:var(--unassessed)}
+  .signals .hd{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;opacity:.85}
+  .signals .ev{display:block;margin-top:4px;font-style:italic;opacity:.85}
+  .signals .evsrc{display:block;margin-top:4px;font-size:11px;color:#5a6a8a}
+  .signals .stale{margin-top:5px;font-size:11px;font-weight:700;color:#8a5a00}
+  .signals .natnote{margin-top:5px;font-size:11px;font-weight:600;color:#5a6a8a}
+  .verify{margin-top:5px;font-size:11px;opacity:.75}
+  .card.stale{opacity:.62}
+  .card.stale .badge{filter:grayscale(.35)}
+  .links{margin-top:9px;display:flex;gap:7px;flex-wrap:wrap}
+  .links a{font-size:12px;font-weight:600;text-decoration:none;color:var(--teal-dark);border:1px solid var(--line);background:#fff;padding:4px 10px;border-radius:8px}
+  .links a.book{color:#fff;background:var(--teal);border-color:var(--teal)}
+  .leaflet-popup-content{margin:11px 13px;font-family:inherit}
+  .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .pin span{transform:rotate(45deg);display:block;text-align:center;line-height:22px;color:#fff;font-weight:800;font-size:11px}
+  .pop h4{margin:0 0 4px;font-size:15px}
+  .pop .cx{color:var(--muted);font-size:12px;margin-bottom:5px}
+  .legend{margin:8px 0 0;padding:0;list-style:none}
+  .legend li{display:flex;gap:8px;align-items:flex-start;margin-top:5px}
+  .legend .sw2{width:10px;height:10px;border-radius:50%;flex:none;margin-top:3px}
+  /* Floating list/map switch for phones (header toggle is cramped there) */
+  #fab{display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:1300;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer}
+  @media(max-width:899px){
+    .views{display:none}
+    .tag{display:none}
+    .claim{font-size:11.5px;padding:5px 9px}
+    #fab{display:block}
+    .wrap{height:auto}
+    body.v-split #map{display:none}
+    body.v-split #list,#list{width:100%;min-width:0;border-right:0}
+    body.v-map .wrap{height:calc(100vh - 88px)}
+    body.v-map #map{display:block}
+    .hero h1{font-size:20px}
+  }
+</style>
+</head>
+<body class="v-split">
+
+<!-- ===== DESIGN CANVAS SHIM (Nano) — makes the real site self-contained: real venues baked in,
+      no API, no login. Delete this block to return to the live API-backed version. ===== -->
+<script>
+window.__DESIGN_CANVAS__ = true;
+const __SUB = [{"name":"Browns Ruislip","area":"Ruislip","postcode":"HA4 7TJ","phone":"01895 622109","lat":51.585194,"lng":-0.433498,"cuisine":"British Brasserie","hygiene":5,"kind":"chain","tier":"gold","accredited":true,"gfAvailable":true,"breadth":"extensive","breadthCount":17,"price":"£££","signal":"strong","evidence":"Listed on the Coeliac UK accredited-venues directory (independently accredited). (national brand menu — local branch may vary)","provenanceSource":"coeliac-uk-register","provenanceUrl":null,"site":"https://www.browns-restaurants.co.uk/restaurants/london/ruislip","menu":"https://www.browns-restaurants.co.uk/restaurants/london/ruislip/glutenfreemenu","bookingPlatform":"own-site","bookingUrl":"https://www.browns-restaurants.co.uk/restaurants/london/ruislip/tablebooking","checked":"2026-08-16T22:50:21.775Z","_tier":"gold","_tierLabel":"Accredited","_color":"#b8860b","_rank":0,"_cat":"British","_stale":false},{"name":"PizzaExpress (Restaurants) Limited","area":"Bury","postcode":"BL9 0JX","phone":"0161 763 3655","lat":53.59448,"lng":-2.291742,"cuisine":"Italian","hygiene":5,"kind":"chain","tier":"gold","accredited":true,"gfAvailable":true,"breadth":"extensive","breadthCount":22,"price":"££","signal":"strong","evidence":"Listed on the Coeliac UK accredited-venues directory (independently accredited). (national brand menu — local branch may vary)","provenanceSource":"coeliac-uk-register","provenanceUrl":null,"site":"https://www.pizzaexpress.com/","menu":null,"bookingPlatform":"own site","bookingUrl":"https://www.pizzaexpress.com/book","checked":"2026-09-08T09:56:38.000Z","_tier":"gold","_tierLabel":"Accredited","_color":"#b8860b","_rank":0,"_cat":"Italian / pizza","_stale":false},{"name":"Benito Lounge","area":"Manchester","postcode":"M21 9AJ","phone":null,"lat":53.4422204,"lng":-2.2782469,"cuisine":"American","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":true,"breadth":"extensive","breadthCount":62,"price":"£","signal":"strong","evidence":"Venue states: “We pride ourselves on being a business that offers dedicated menus for gluten-free … a senior member of staff will deal with your order. This includes preparing food in a separate area to avoid cross-contamination” (thelounges.co.uk/faqs, brand-wide). (national brand menu — local branch may vary)","provenanceSource":"own-site","provenanceUrl":"https://thelounges.co.uk/faqs/","site":"https://thelounges.co.uk","menu":"https://thelounges.co.uk/faqs/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T09:56:38.026Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Other","_stale":false},{"name":"Granero Lounge","area":"Ruislip","postcode":"HA4 8JB","phone":"+44 1895 707166","lat":51.574142,"lng":-0.424051,"cuisine":"Cafe","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":true,"breadth":"extensive","breadthCount":62,"price":"££","signal":"strong","evidence":"Venue states: “We pride ourselves on being a business that offers dedicated menus for gluten-free … a senior member of staff will deal with your order. This includes preparing food in a separate area to avoid cross-contamination” (thelounges.co.uk/faqs, brand-wide). (national brand menu — local branch may vary)","provenanceSource":"pilot","provenanceUrl":"https://thelounges.co.uk/faqs/","site":"https://thelounges.co.uk/granero","menu":"https://thelounges.co.uk/granero/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-16T22:54:43.095Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Cafe / breakfast","_stale":false},{"name":"Miller & Carter","area":"Manchester","postcode":"M2 4LQ","phone":null,"lat":53.481055,"lng":-2.243588,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":60,"price":null,"signal":"strong","evidence":"Venue states: “our gluten-free menu is accredited by the coeliac society.” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://www.millerandcarter.co.uk/menus/gluten-free-menu?allergens=&excludeAllergenDishes=false#/","site":"https://millerandcarter.co.uk","menu":"https://millerandcarter.co.uk","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T18:47:05.949Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Bakery / desserts","_stale":false},{"name":"Mings","area":"Bury","postcode":"M45 7RG","phone":"0161 796 7956","lat":53.5548206,"lng":-2.3029386,"cuisine":"Chinese","hygiene":5,"kind":"independent","tier":"green","accredited":false,"gfAvailable":true,"breadth":"limited","breadthCount":2,"price":"£","signal":"strong","evidence":"Venue states: “separate oil”.","provenanceSource":"pilot","provenanceUrl":"https://www.mingswhitefield.co.uk/","site":"https://www.mingswhitefield.co.uk/","menu":"https://www.mingswhitefield.co.uk/menu","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-17T09:52:52.116Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Chinese","_stale":false},{"name":"Morello Lounge","area":"Ruislip","postcode":"UB8 1BP","phone":"+441895540923","lat":51.5451232,"lng":-0.4773373,"cuisine":"Cafe","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":true,"breadth":"extensive","breadthCount":62,"price":"££","signal":"strong","evidence":"Venue states: “r order. this includes preparing food in a separate area to avoid cross-contamination”. (national brand menu — local branch may vary)","provenanceSource":"pilot","provenanceUrl":"https://thelounges.co.uk/faqs/","site":"https://thelounges.co.uk/faqs/","menu":"https://thelounges.co.uk/faqs/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-16T22:58:58.433Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Cafe / breakfast","_stale":false},{"name":"Pizza Express","area":"Manchester","postcode":"M4 3TR","phone":null,"lat":53.4850427,"lng":-2.2430068,"cuisine":"Italian","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":52,"price":null,"signal":"strong","evidence":"Venue states: “we offer a wide range of gluten-free dishes, which are marked ‘gf’ on our menus and accredited by coeliac uk.” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://content-cdn.pizzaexpress.com/files/lj3txstz/production/02b1f194304b52bb420ae8bd0db34a411eac1a90.pdf","site":"https://pizzaexpress.com","menu":"https://www.pizzaexpress.com/","bookingPlatform":"own site","bookingUrl":"https://pizzaexpress.com/book","checked":"2026-08-26T12:23:22.981Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Italian / pizza","_stale":false},{"name":"Pizza Express","area":"Manchester","postcode":"M20 6UR","phone":null,"lat":53.424902,"lng":-2.235531,"cuisine":"Italian","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":24,"price":null,"signal":"strong","evidence":"Venue states: “we offer a wide range of gluten-free dishes, which are marked ‘gf’ on our menus and accredited by coeliac uk.” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://content-cdn.pizzaexpress.com/files/lj3txstz/production/02b1f194304b52bb420ae8bd0db34a411eac1a90.pdf","site":"https://pizzaexpress.com","menu":"https://www.pizzaexpress.com/","bookingPlatform":"own site","bookingUrl":"https://pizzaexpress.com/book","checked":"2026-08-26T12:23:19.151Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Italian / pizza","_stale":false},{"name":"Pizza Express","area":"Manchester","postcode":"M1 6FQ","phone":null,"lat":53.475595,"lng":-2.241417,"cuisine":"Italian","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":54,"price":null,"signal":"strong","evidence":"Venue states: “we offer a wide range of gluten-free dishes, which are marked ‘gf’ on our menus and accredited by coeliac uk.” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://content-cdn.pizzaexpress.com/files/lj3txstz/production/02b1f194304b52bb420ae8bd0db34a411eac1a90.pdf","site":"https://pizzaexpress.com","menu":"https://www.pizzaexpress.com/","bookingPlatform":"own site","bookingUrl":"https://pizzaexpress.com/book","checked":"2026-08-26T12:23:21.705Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Italian / pizza","_stale":false},{"name":"Pizza Express","area":"Manchester","postcode":"M15 4FN","phone":null,"lat":53.4730762,"lng":-2.2470813,"cuisine":"Italian","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":42,"price":null,"signal":"strong","evidence":"Venue states: “we offer a wide range of gluten-free dishes, which are marked ‘gf’ on our menus and accredited by coeliac uk.” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://content-cdn.pizzaexpress.com/files/lj3txstz/production/02b1f194304b52bb420ae8bd0db34a411eac1a90.pdf","site":"https://pizzaexpress.com","menu":"https://www.pizzaexpress.com/","bookingPlatform":"own site","bookingUrl":"https://pizzaexpress.com/book","checked":"2026-08-26T12:23:46.306Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Italian / pizza","_stale":false},{"name":"Pizza Express","area":"Manchester","postcode":"M2 4WQ","phone":null,"lat":53.480785,"lng":-2.243737,"cuisine":"Italian","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":41,"price":null,"signal":"strong","evidence":"Venue states: “we offer a wide range of gluten-free dishes, which are marked ‘gf’ on our menus and accredited by coeliac uk.” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://content-cdn.pizzaexpress.com/files/lj3txstz/production/02b1f194304b52bb420ae8bd0db34a411eac1a90.pdf","site":"https://pizzaexpress.com","menu":"https://www.pizzaexpress.com/","bookingPlatform":"own site","bookingUrl":"https://pizzaexpress.com/book","checked":"2026-08-26T12:23:40.399Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Italian / pizza","_stale":false},{"name":"PIZZA HUT","area":"Manchester","postcode":"M21 9AN","phone":null,"lat":53.4423612,"lng":-2.2795426,"cuisine":"American","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":51,"price":null,"signal":"strong","evidence":"Venue states: allergen guide carries a 'coeliacs (gluten below 20ppm)' key and lists a gluten-free dough base. Local branches may vary. (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://assets.ctfassets.net/gsh8f6v1sw3c/6XUgXQCKklvPyrUmgIVshd/6948068493acdb5a30c672d76e6cbc27/DELEX_AIN_Booklet_C3_2026_V1_1.pdf","site":"https://pizzahut.co.uk","menu":"https://pizzahut.co.uk","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T18:59:40.959Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Other","_stale":false},{"name":"Pizza Hut Delivery","area":"Manchester","postcode":"M1 7DY","phone":null,"lat":53.4704487,"lng":-2.2370918,"cuisine":"American","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":51,"price":null,"signal":"strong","evidence":"Venue states: allergen guide carries a 'coeliacs (gluten below 20ppm)' key and lists a gluten-free dough base. Local branches may vary. (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://assets.ctfassets.net/gsh8f6v1sw3c/6XUgXQCKklvPyrUmgIVshd/6948068493acdb5a30c672d76e6cbc27/DELEX_AIN_Booklet_C3_2026_V1_1.pdf","site":"https://pizzahut.co.uk","menu":"https://pizzahut.co.uk","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T18:59:40.959Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Other","_stale":false},{"name":"Pizza Hut Express","area":"Manchester","postcode":"M4 3AQ","phone":null,"lat":53.483154,"lng":-2.241377,"cuisine":"American","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":52,"price":null,"signal":"strong","evidence":"Venue states: allergen guide carries a 'coeliacs (gluten below 20ppm)' key and lists a gluten-free dough base. Local branches may vary. (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://assets.ctfassets.net/gsh8f6v1sw3c/6XUgXQCKklvPyrUmgIVshd/6948068493acdb5a30c672d76e6cbc27/DELEX_AIN_Booklet_C3_2026_V1_1.pdf","site":"https://pizzahut.co.uk","menu":"https://pizzahut.co.uk","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T18:59:40.959Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Other","_stale":false},{"name":"Pizza Hut Restaurants - Dine In","area":"Manchester","postcode":"M4 3AG","phone":null,"lat":53.48525863,"lng":-2.24199544,"cuisine":"American","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":46,"price":null,"signal":"strong","evidence":"Venue states: allergen guide carries a 'coeliacs (gluten below 20ppm)' key and lists a gluten-free dough base. Local branches may vary. (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://assets.ctfassets.net/gsh8f6v1sw3c/6XUgXQCKklvPyrUmgIVshd/6948068493acdb5a30c672d76e6cbc27/DELEX_AIN_Booklet_C3_2026_V1_1.pdf","site":"https://pizzahut.co.uk","menu":"https://pizzahut.co.uk","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T18:59:40.959Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Other","_stale":false},{"name":"Racconto Lounge","area":"Bury","postcode":"BL9 0PL","phone":"0161 763 1344","lat":53.6529900000937,"lng":-2.30376,"cuisine":"Cafe","hygiene":5,"kind":"chain","tier":"green","accredited":false,"gfAvailable":true,"breadth":"extensive","breadthCount":62,"price":"££","signal":"strong","evidence":"Venue states: “We pride ourselves on being a business that offers dedicated menus for gluten-free … a senior member of staff will deal with your order. This includes preparing food in a separate area to avoid cross-contamination” (thelounges.co.uk/faqs, brand-wide). (national brand menu — local branch may vary)","provenanceSource":"pilot","provenanceUrl":"https://thelounges.co.uk/faqs/","site":"https://thelounges.co.uk/racconto/","menu":"https://thelounges.co.uk/racconto/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-17T07:19:34.040Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Cafe / breakfast","_stale":false},{"name":"The Fish & Chip Co","area":"Bury","postcode":"BL0 9ND","phone":"01706 828593","lat":53.642008,"lng":-2.323835,"cuisine":"Fish & Chips","hygiene":4,"kind":"independent","tier":"green","accredited":false,"gfAvailable":true,"breadth":"extensive","breadthCount":10,"price":"£","signal":"strong","evidence":"Venue states: “separate fryer”.","provenanceSource":"pilot","provenanceUrl":"https://www.thefishandchipco.com/gluten-free","site":"https://www.thefishandchipco.com/gluten-free","menu":"https://www.thefishandchipco.com/menu","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-17T09:59:43.173Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Fish & chips","_stale":false},{"name":"The Wharf","area":"Manchester","postcode":"M15 4ST","phone":null,"lat":53.4736723,"lng":-2.2567585,"cuisine":"Pub","hygiene":5,"kind":"independent","tier":"green","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":28,"price":null,"signal":"strong","evidence":"Venue states: “coeliac uk accredited we are proud to have the processes in place to meet this standard and serve gluten free food safely.”","provenanceSource":"own-site","provenanceUrl":"https://www.brunningandprice.co.uk/thewharf/","site":"https://www.brunningandprice.co.uk/thewharf/","menu":"https://thewharf.com/","bookingPlatform":"SevenRooms","bookingUrl":"https://www.sevenrooms.com/.h/download/AMIfv954EjNjpLrTiTD2PCNYHgB9asmM1gKncr6RaGgefc_csHnUHsqGnHZWYARQEVy5HHrapdgEuMytbynLAnY_dJc9aGYyBOFuPmWjVCNOgM3Ypb9ka7HhLHDBXXUMoyy2u2EQ8zrgOwSW8cbrYo0y2sARSgxe5NE7DbiX4bCCpnaNNOfEUs9EPBMUog9VvvIHkyjIGreKamH4hAXTXtU5f9pMMHw_m8EExtlsS6bY7w6eznRBgqMhNj7j1cGU5XF0zZnougKJb0nbcaKP9yLiy1nOq5YzPFVIWJyE2wQm-nwzcAcblmKc6YqQKQ7dK-Omx-wzN76VFE-bTOTdqbUzOia2RA_TfPCe8HrmIzmeVp7kkl0g34CfVebg9Rlpe2WfQZe8CKX0vEduiElntFK9oi4hue2iHz-1Ot69YDzp9ra4NQq6qOk","checked":"2026-08-26T12:32:16.821Z","_tier":"green","_tierLabel":"Coeliac provision (stated)","_color":"#1a7f37","_rank":1,"_cat":"Pub","_stale":false},{"name":"Papa John's Manchester Central","area":"Manchester","postcode":"M1 5AZ","phone":null,"lat":53.4771079,"lng":-2.243683,"cuisine":"Italian","hygiene":5,"kind":"independent","tier":"amber","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":1,"price":null,"signal":"strong","evidence":"Venue states: wheat-free base available but 'not suitable for people with coeliac disease, gluten intolerances or allergies' due to cross-contact. Local branches may vary.","provenanceSource":"national-site","provenanceUrl":"https://www.papajohns.co.uk/static/assets/pdfs/nutritional-information.pdf","site":"https://www.papajohns.co.uk","menu":"https://www.papajohns.co.uk/static/assets/pdfs/nutritional-information.pdf","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-06T08:35:54.233Z","_tier":"amber","_tierLabel":"Caution","_color":"#e5a100","_rank":3,"_cat":"Italian / pizza","_stale":false},{"name":"Papa Johns Pizza Fallowfield","area":"Manchester","postcode":"M14 6LD","phone":null,"lat":53.443495,"lng":-2.218938,"cuisine":"Italian","hygiene":4,"kind":"independent","tier":"amber","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":1,"price":null,"signal":"strong","evidence":"Venue states: wheat-free base available but 'not suitable for people with coeliac disease, gluten intolerances or allergies' due to cross-contact. Local branches may vary.","provenanceSource":"national-site","provenanceUrl":"https://www.papajohns.co.uk/static/assets/pdfs/nutritional-information.pdf","site":"https://www.papajohns.co.uk","menu":"https://www.papajohns.co.uk/static/assets/pdfs/nutritional-information.pdf","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T18:59:40.959Z","_tier":"amber","_tierLabel":"Caution","_color":"#e5a100","_rank":3,"_cat":"Italian / pizza","_stale":false},{"name":"The Coffee Sack","area":"Bury","postcode":"M25 0PD","phone":"0161 773 2000","lat":53.524272,"lng":-2.2761,"cuisine":"Bakery","hygiene":5,"kind":"independent","tier":"amber","accredited":false,"gfAvailable":true,"breadth":null,"breadthCount":2,"price":"£","signal":"strong","evidence":"The venue offers gluten-free bread and bagels and says most dishes can be made gluten free, but its menu notes fried items share a fryer with gluten unless a clean fryer is requested.","provenanceSource":"own-site","provenanceUrl":"https://www.thecoffeesack.shop/","site":"https://www.thecoffeesack.shop/","menu":"https://www.thecoffeesack.shop/","bookingPlatform":null,"bookingUrl":null,"checked":"1788553984485.0","_tier":"amber","_tierLabel":"Caution","_color":"#e5a100","_rank":3,"_cat":"Bakery / desserts","_stale":false},{"name":"63 Degrees","area":"Manchester","postcode":"M4 1HQ","phone":null,"lat":53.485043,"lng":-2.235834,"cuisine":null,"hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":null,"evidence":"","provenanceSource":"","provenanceUrl":"","site":"http://www.63degrees.co.uk/","menu":"http://www.63degrees.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:36:32.204Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Other","_stale":false},{"name":"8 Manchester","area":"Bury","postcode":"M45 8QN","phone":"0161 478 4884","lat":53.550159,"lng":-2.294863,"cuisine":"Chinese","hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":4,"price":null,"signal":"some","evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://8whitefield.co.uk/","menu":"https://8whitefield.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-04T19:42:43.668Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Chinese","_stale":false},{"name":"Acai And The Tribe","area":"Manchester","postcode":"M3 4EN","phone":null,"lat":53.4773251,"lng":-2.2498974,"cuisine":null,"hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":null,"evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://www.acaiandthetribe.co.uk/our-locations","menu":null,"bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:36:32.205Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Other","_stale":false},{"name":"Admiral Casino","area":"Manchester","postcode":"M1 1LQ","phone":null,"lat":53.4814021,"lng":-2.2357362,"cuisine":"Pub","hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://www.admiralslots.co.uk/venues/manchester-piccadilly/","menu":"https://www.admiralcasino.co.uk/en","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:36:32.207Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Pub","_stale":false},{"name":"Al Bosco","area":"Bury","postcode":"BL9 5QP","phone":"01706 823021","lat":53.6298548,"lng":-2.3203972,"cuisine":"Italian","hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":49,"price":"££","signal":"some","evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://alboscoristorante.co.uk/","menu":"https://alboscoristorante.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-04T19:42:43.671Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Italian / pizza","_stale":false},{"name":"Al Hindawiya","area":"Manchester","postcode":"M3 1EY","phone":null,"lat":53.491214,"lng":-2.2437636,"cuisine":null,"hygiene":null,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":null,"evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://alhindawiya.co.uk/","menu":"https://alhindawiya.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T16:57:13.458Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Other","_stale":false},{"name":"All The Shapes","area":"Bury","postcode":"M25 3HN","phone":null,"lat":53.532132,"lng":-2.285836,"cuisine":"Pub","hygiene":4,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":null,"evidence":"","provenanceSource":"","provenanceUrl":"","site":null,"menu":null,"bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:36:31.878Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Pub","_stale":false},{"name":"Armaan","area":"Bury","postcode":"M26 1AQ","phone":null,"lat":53.554976,"lng":-2.32649,"cuisine":null,"hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":null,"evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://armaan.co.uk/","menu":"https://armaan.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:36:31.863Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Other","_stale":false},{"name":"Armstrongs Fish & Chip Shop","area":"Bury","postcode":"M25 5NL","phone":"+44 161 773 6023","lat":53.535469,"lng":-2.27267,"cuisine":"Fish & Chips","hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":"££","signal":"strong","evidence":null,"provenanceSource":"own-site","provenanceUrl":"https://www.jumbocod.com/","site":"https://www.jumbocod.com/","menu":"https://www.jumbocod.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-06T18:22:41.720Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Fish & chips","_stale":false},{"name":"Artista Perfetto","area":"Manchester","postcode":"M4 6BG","phone":null,"lat":53.4868059,"lng":-2.227219,"cuisine":null,"hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://artistaperfetto.com/pages/store-info","menu":"https://artistaperfetto.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:36:32.210Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Other","_stale":false},{"name":"Asda Coffee Shop","area":"Ruislip","postcode":"UB3 4AZ","phone":"02037701902","lat":51.501993,"lng":-0.428399,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":0,"price":"£","signal":"some","evidence":null,"provenanceSource":"pilot","provenanceUrl":null,"site":null,"menu":null,"bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-22T20:19:42.208Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Cafe / breakfast","_stale":false},{"name":"Baby Platinum","area":"Manchester","postcode":"M1 6JB","phone":null,"lat":53.476383,"lng":-2.238408,"cuisine":"Pub","hygiene":5,"kind":"independent","tier":"unread","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":null,"evidence":"","provenanceSource":"","provenanceUrl":"","site":"https://www.babyplatinummanchester.co.uk/useful_information","menu":"https://babyplatinum.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-06T18:22:41.747Z","_tier":"unread","_tierLabel":"Menu not readable","_color":"#8a63d2","_rank":5,"_cat":"Pub","_stale":false},{"name":"3 Guys Pizza","area":"Manchester","postcode":"M23 2UH","phone":"01614902323","lat":53.379257,"lng":-2.285502,"cuisine":"Italian","hygiene":4,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":2,"price":"££","signal":"strong","evidence":"Gluten-free items are listed on the venue’s own menu.","provenanceSource":"own-site","provenanceUrl":"https://3guyspizza.co.uk/","site":"https://3guyspizza.co.uk/","menu":"https://3guyspizza.co.uk/","bookingPlatform":"EatClub","bookingUrl":"https://3guyspizza.co.uk/","checked":"2026-09-03T12:35:23.592Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Italian / pizza","_stale":false},{"name":"Albert's Didsbury","area":"Manchester","postcode":"M20 2PU","phone":null,"lat":53.422311,"lng":-2.245674,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":45,"price":"££","signal":"strong","evidence":"Venue states: “m saturday &#038; sunday [v] vegetarian | [ve] vegan | [gf] gluten free”","provenanceSource":"own-site","provenanceUrl":"https://alberts-restaurants.com/didsbury/","site":"https://alberts-restaurants.com/didsbury/","menu":"https://alberts-restaurants.com/didsbury/","bookingPlatform":"OpenTable","bookingUrl":"https://www.opentable.com/restref/client/?rid=44032&restref=44032&accessRuleToken=3448b1d4-7a98-41a3-87ff-6d8b5dcb687f","checked":"2026-08-23T06:51:05.674Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Alberts Shed Dukes Grill also T/as Dukes 92","area":"Manchester","postcode":"M3 4LZ","phone":null,"lat":53.4744453430176,"lng":-2.25477409362793,"cuisine":"American","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":43,"price":"£££","signal":"strong","evidence":"Venue states: “p to 11 people from 12pm [v] vegetarian | [ve] vegan | [gf] gluten free”","provenanceSource":"own-site","provenanceUrl":"https://alberts-restaurants.com/shed/","site":"https://albertsshed.com/","menu":"https://alberts-restaurants.com/shed/","bookingPlatform":"OpenTable","bookingUrl":"https://restaurant.opentable.co.uk/badge/ot/DC2-2024.png","checked":"2026-08-29T21:23:56.028Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Other","_stale":false},{"name":"Arcade Club Ltd","area":"Bury","postcode":"BL9 7BW","phone":"+44 161 464 9796","lat":53.594551,"lng":-2.284233,"cuisine":"Casual Dining","hygiene":3,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":true,"breadth":"limited","breadthCount":2,"price":"£","signal":"some","evidence":"Gluten-free items on the venue’s own menu.","provenanceSource":"pilot","provenanceUrl":null,"site":"https://www.arcadeclub.co.uk/","menu":"https://www.arcadeclub.co.uk/menu/food/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-17T07:31:50.109Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Other","_stale":false},{"name":"Arens Bar & Grill at the Six Bells","area":"Ruislip","postcode":"HA4 7TP","phone":"020 8868 3092","lat":51.589527130127,"lng":-0.436915010213852,"cuisine":"British, Grill","hygiene":4,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":true,"breadth":"extensive","breadthCount":28,"price":null,"signal":"some","evidence":"Gluten-free items on the venue’s own menu.","provenanceSource":"pilot","provenanceUrl":null,"site":"https://www.arens.uk/","menu":"https://www.arens.uk/menus","bookingPlatform":"own site","bookingUrl":"https://industrial.curtisswright.com/","checked":"2026-08-16T23:09:35.711Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"British","_stale":false},{"name":"Bagel Factory","area":"Manchester","postcode":"M3 3EB","phone":null,"lat":53.4798618,"lng":-2.2522343,"cuisine":"Greek","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":2,"price":null,"signal":"some","evidence":"Venue states: “gf”","provenanceSource":"own-site","provenanceUrl":"https://bagelfactory.co.uk/","site":"https://bagelfactory.co.uk/locations/","menu":"https://bagelfactory.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:54.764Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Greek","_stale":false},{"name":"Bagel Factory","area":"Manchester","postcode":"M4 3AQ","phone":null,"lat":53.4829368591309,"lng":-2.24279999732971,"cuisine":"Greek","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":2,"price":null,"signal":"some","evidence":"Venue states: “gf”","provenanceSource":"own-site","provenanceUrl":"https://bagelfactory.co.uk/","site":"https://bagelfactory.co.uk/locations/","menu":"https://bagelfactory.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:59.798Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Greek","_stale":false},{"name":"Bagel Factory Shop","area":"Manchester","postcode":"M1 7FS","phone":null,"lat":53.472875,"lng":-2.238959,"cuisine":"Greek","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":2,"price":null,"signal":"strong","evidence":"Venue states: “gf”","provenanceSource":"own-site","provenanceUrl":"https://bagelfactory.co.uk/locations/manchester/oxford-road/","site":"https://bagelfactory.co.uk/locations/manchester/oxford-road/","menu":"https://bagelfactory.co.uk/locations/manchester/oxford-road/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-29T21:23:55.130Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Greek","_stale":false},{"name":"Beefeater Heald Green","area":"Manchester","postcode":"SK8 3QH","phone":null,"lat":53.3699227,"lng":-2.237751,"cuisine":"Hotel","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":55,"price":"£","signal":"strong","evidence":"Venue states: “hios, walnuts ) and products thereof. we take great care to prevent cross-contamination” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://www.beefeater.co.uk/en-gb/allergy-nutrition","site":"https://beefeater.co.uk","menu":"https://www.beefeater.co.uk/en-gb","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:26:52.693Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Other","_stale":false},{"name":"Black Sheep Coffee","area":"Manchester","postcode":"M1 3BN","phone":null,"lat":53.477733,"lng":-2.232765,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":3,"price":null,"signal":"strong","evidence":"Venue states: “ts) yes yes millionaire shortbreads yes (wheat) yes yes yes gluten free”","provenanceSource":"national-site","provenanceUrl":"https://cdn.shopify.com/s/files/1/0013/8530/0032/files/Allergen_Matrix_UK_2024.pdf","site":"https://blacksheepcoffee.co.uk/","menu":"https://blacksheepcoffee.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:20:21.290Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Black Sheep Coffee","area":"Manchester","postcode":"M1 1WR","phone":null,"lat":53.4829429,"lng":-2.242812,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":3,"price":null,"signal":"strong","evidence":"Venue states: “ts) yes yes millionaire shortbreads yes (wheat) yes yes yes gluten free”","provenanceSource":"national-site","provenanceUrl":"https://cdn.shopify.com/s/files/1/0013/8530/0032/files/Allergen_Matrix_UK_2024.pdf","site":"https://blacksheepcoffee.co.uk/","menu":"https://blacksheepcoffee.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:20:02.995Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Black Sheep Coffee","area":"Manchester","postcode":"M3 2BW","phone":null,"lat":53.48186015,"lng":-2.2465471,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":13,"price":null,"signal":"strong","evidence":"Venue states: “ts) yes yes millionaire shortbreads yes (wheat) yes yes yes gluten free”","provenanceSource":"national-site","provenanceUrl":"https://cdn.shopify.com/s/files/1/0013/8530/0032/files/Allergen_Matrix_UK_2024.pdf","site":"https://blacksheepcoffee.co.uk/","menu":"https://blacksheepcoffee.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:20:18.051Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Black Sheep Coffee","area":"Manchester","postcode":"M1 2GH","phone":null,"lat":53.4784088134766,"lng":-2.23171210289001,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":3,"price":null,"signal":"strong","evidence":"Venue states: “ts) yes yes millionaire shortbreads yes (wheat) yes yes yes gluten free”","provenanceSource":"national-site","provenanceUrl":"https://cdn.shopify.com/s/files/1/0013/8530/0032/files/Allergen_Matrix_UK_2024.pdf","site":"https://blacksheepcoffee.co.uk/","menu":"https://blacksheepcoffee.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:20:37.222Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Black Sheep Coffee","area":"Manchester","postcode":"M2 2BQ","phone":null,"lat":53.4801757,"lng":-2.2419243,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"several","breadthCount":9,"price":null,"signal":"strong","evidence":"Venue states: “ts) yes yes millionaire shortbreads yes (wheat) yes yes yes gluten free”","provenanceSource":"national-site","provenanceUrl":"https://cdn.shopify.com/s/files/1/0013/8530/0032/files/Allergen_Matrix_UK_2024.pdf","site":"https://blacksheepcoffee.co.uk/","menu":"https://blacksheepcoffee.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:20:37.984Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Black Sheep Coffee","area":"Manchester","postcode":"M3 3EB","phone":null,"lat":53.4798497,"lng":-2.2522273,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":3,"price":null,"signal":"strong","evidence":"Venue states: “ts) yes yes millionaire shortbreads yes (wheat) yes yes yes gluten free”","provenanceSource":"national-site","provenanceUrl":"https://cdn.shopify.com/s/files/1/0013/8530/0032/files/Allergen_Matrix_UK_2024.pdf","site":"https://blacksheepcoffee.co.uk/","menu":"https://blacksheepcoffee.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:26:58.964Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Black Sheep Coffee","area":"Manchester","postcode":"M2 3AA","phone":null,"lat":53.47804,"lng":-2.24348,"cuisine":"Cafe","hygiene":4,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":3,"price":null,"signal":"strong","evidence":"Venue states: “ts) yes yes millionaire shortbreads yes (wheat) yes yes yes gluten free”","provenanceSource":"national-site","provenanceUrl":"https://cdn.shopify.com/s/files/1/0013/8530/0032/files/Allergen_Matrix_UK_2024.pdf","site":"https://blacksheepcoffee.co.uk/","menu":"https://blacksheepcoffee.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:24:20.812Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Blacklock Manchester","area":"Manchester","postcode":"M2 5GB","phone":null,"lat":53.4781801,"lng":-2.2468383,"cuisine":"Pub","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":1,"price":"££","signal":"strong","evidence":"Venue states: “all the classic british sides. we also serve a selection of gluten-free”","provenanceSource":"own-site","provenanceUrl":"https://theblacklock.com/restaurants/manchester/","site":"https://theblacklock.com/restaurants/manchester/","menu":"https://theblacklock.com/restaurants/manchester/","bookingPlatform":"own site","bookingUrl":"https://theblacklock.com/manchester-reservations/","checked":"2026-08-26T06:52:56.047Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Pub","_stale":false},{"name":"Blue Eyed Panda","area":"Manchester","postcode":"M4 6JA","phone":null,"lat":53.4836199,"lng":-2.2291342,"cuisine":"Chinese","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":true,"breadth":"several","breadthCount":8,"price":"££","signal":"weak","evidence":"Venue states: “please imform our staff that you need the gluten free version of the dish even if you are reading the gluten free menu. the chefs will adjust the cooking ingredients for you!”","provenanceSource":"own-site","provenanceUrl":"http://www.blueeyedpanda.co.uk/","site":"http://www.blueeyedpanda.co.uk/","menu":"http://www.blueeyedpanda.co.uk/","bookingPlatform":"TheFork","bookingUrl":"https://widget.thefork.com/975bfcbc-368d-446c-a5f6-0cb7c0ee44fa","checked":"2026-08-23T06:51:14.567Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Chinese","_stale":false},{"name":"Blush cafe","area":"Ruislip","postcode":"HA6 1AB","phone":"01923 842995","lat":51.6115694,"lng":-0.4226631,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":true,"breadth":"limited","breadthCount":1,"price":null,"signal":"some","evidence":"Gluten-free items on the venue’s own menu.","provenanceSource":"pilot","provenanceUrl":null,"site":"https://blush.cafe/","menu":"https://blush.cafe/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-16T22:50:11.293Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Boston","area":"Bury","postcode":"BL8 1RU","phone":"0161 764 7676","lat":53.6003058,"lng":-2.3152171,"cuisine":"Italian","hygiene":3,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":20,"price":"££","signal":"strong","evidence":"Gluten-free items are listed on the venue’s own menu.","provenanceSource":"own-site","provenanceUrl":"https://bostonpizzabury.co.uk/","site":"https://bostonpizzabury.co.uk/","menu":"https://bostonpizzabury.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-04T20:18:30.118Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Italian / pizza","_stale":false},{"name":"Boulevard Deli","area":"Manchester","postcode":"M20 2EU","phone":null,"lat":53.430351,"lng":-2.247737,"cuisine":"Italian","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":3,"price":"£","signal":"strong","evidence":"Venue states: “ched, thin crispy base with mozzarella pomodoro tomato - 10 gluten free”","provenanceSource":"own-site","provenanceUrl":"https://www.theboulevarddeli.co.uk/","site":"https://www.theboulevarddeli.co.uk/","menu":"https://www.theboulevarddeli.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:51:13.881Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Italian / pizza","_stale":false},{"name":"Bundobust","area":"Manchester","postcode":"M1 6EQ","phone":null,"lat":53.4759695,"lng":-2.2420781,"cuisine":"Indian","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":19,"price":"£","signal":"some","evidence":"Venue states: “gf”","provenanceSource":"own-site","provenanceUrl":"https://bundobust.com/","site":"https://bundobust.com/","menu":"https://bundobust.com/","bookingPlatform":"ResDiary","bookingUrl":"https://booking.resdiary.com/widget/Standard/BUNDOBUSTBREWERY/57110","checked":"2026-08-23T06:51:24.215Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Indian","_stale":false},{"name":"Bundobust","area":"Manchester","postcode":"M1 2AG","phone":null,"lat":53.4811,"lng":-2.234531,"cuisine":"Indian","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":19,"price":"£","signal":"some","evidence":"Venue states: “gf”","provenanceSource":"own-site","provenanceUrl":"https://bundobust.com/","site":"https://bundobust.com/","menu":"https://bundobust.com/","bookingPlatform":"ResDiary","bookingUrl":"https://booking.resdiary.com/widget/Standard/BUNDOBUSTBREWERY/57110","checked":"2026-08-29T21:24:00.739Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Indian","_stale":false},{"name":"Burnage Fast Food","area":"Manchester","postcode":"M19 1FE","phone":"01616371418","lat":53.433084,"lng":-2.200206,"cuisine":null,"hygiene":4,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":1,"price":null,"signal":"strong","evidence":"prosciutto & funghi tomato sauce, mozzarella, ham, mushrooms. gluten free base available (10\") specials pizza tomato sauce, mozzarella, ham & pineapple gluten free option available (10\") terms & conditions privacy policy careers contact us ","provenanceSource":"own-site","provenanceUrl":"","site":"https://burnagefastfood.co.uk/","menu":"https://burnagefastfood.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-03T12:35:40.934Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Other","_stale":false},{"name":"Cafe Istanbul","area":"Manchester","postcode":"M3 2RH","phone":null,"lat":53.4811596,"lng":-2.2490102,"cuisine":"Turkish","hygiene":5,"kind":"independent","tier":"blue","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":19,"price":"£££","signal":"strong","evidence":"gluten free only allergen filter⌃ nutritionyesno do you wish to exclude dishes that 'may contain' the selected allergens?","provenanceSource":"own-site","provenanceUrl":"https://www.cafeistanbulmanchester.co.uk/","site":"https://www.cafeistanbulmanchester.co.uk/","menu":"https://www.cafeistanbuldublin.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:37:10.281Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Turkish / kebab","_stale":false},{"name":"10 Tib Lane","area":"Manchester","postcode":"M2 4JB","phone":null,"lat":53.48037,"lng":-2.244593,"cuisine":null,"hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://www.10tiblane.com/","site":"https://www.10tiblane.com/","menu":"https://www.10tiblane.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:48.660Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Other","_stale":false},{"name":"20 Stories","area":"Manchester","postcode":"M3 2BA","phone":null,"lat":53.4790946,"lng":-2.251974,"cuisine":"Cafe","hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"some","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://20stories.co.uk/","site":"https://20stories.co.uk/","menu":"https://20stories.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:48.665Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Cafe / breakfast","_stale":false},{"name":"333 Take Away","area":"Manchester","postcode":"M11 1JJ","phone":null,"lat":53.472697,"lng":-2.164476,"cuisine":"Chinese","hygiene":3,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"some","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://333chinesemanchester.co.uk/","site":"https://333chinesemanchester.co.uk","menu":"https://333chinesemanchester.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-29T21:24:20.344Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Chinese","_stale":false},{"name":"532 Bar & Kitchen","area":"Manchester","postcode":"M13 9PR","phone":null,"lat":53.4643936157227,"lng":-2.23220801353455,"cuisine":"Pub","hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://manchesterstudentsunion.com/532barkitchen","site":"https://manchesterstudentsunion.com/532barkitchen","menu":"https://manchesterstudentsunion.com/532barkitchen","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-29T21:23:41.172Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Pub","_stale":false},{"name":"53two","area":"Manchester","postcode":"M3 4LP","phone":null,"lat":53.4756944,"lng":-2.2492348,"cuisine":null,"hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://www.53two.com/","site":"https://www.53two.com/","menu":"https://www.53two.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:48.666Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Other","_stale":false},{"name":"9inety6ix","area":"Manchester","postcode":"M15 4RA","phone":null,"lat":53.4735131,"lng":-2.2459415,"cuisine":"Pub","hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://9inety6ix.co.uk/","site":"https://9inety6ix.co.uk/","menu":"https://9inety6ix.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:48.666Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Pub","_stale":false},{"name":"A Taste of Village","area":"Ruislip","postcode":"UB4 0RU","phone":"+44 20 3409 3786","lat":51.5206623,"lng":-0.4150684,"cuisine":"Pakistani","hygiene":4,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":"£","signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://tasteofvillagehayes.uk/","site":"https://tasteofvillagehayes.uk/","menu":"https://tasteofvillagehayes.uk/","bookingPlatform":"own site","bookingUrl":"https://tasteofvillagehayes.uk/booking","checked":"2026-08-22T20:20:00.349Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Other","_stale":false},{"name":"Abaseen","area":"Manchester","postcode":"M19 2SY","phone":null,"lat":53.4402397,"lng":-2.1876673,"cuisine":"Indian","hygiene":3,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"some","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://abaseen.uk/","site":"https://abaseen.uk/","menu":"https://abaseen.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:53:47.128Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Indian","_stale":false},{"name":"Addleshaw Goddard","area":"Manchester","postcode":"M2 3DE","phone":null,"lat":53.4774414,"lng":-2.2431694,"cuisine":null,"hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://www.addleshawgoddard.com/en/","site":"https://www.addleshawgoddard.com/en/news/2017/addleshaw-goddard-on-the-move-in-manchester/","menu":"https://www.addleshawgoddard.com/en/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:48.668Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Other","_stale":false},{"name":"Admiral Casino","area":"Manchester","postcode":"M21 9AS","phone":null,"lat":53.442759,"lng":-2.278883,"cuisine":null,"hygiene":null,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://www.admiralslots.co.uk/venues/chorlton/","site":"https://www.admiralslots.co.uk/venues/chorlton/","menu":"https://www.admiralcasino.co.uk/en","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-06T18:23:57.186Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Other","_stale":false},{"name":"Ahaar Indian Street Food","area":"Bury","postcode":"M25 1AF","phone":null,"lat":53.5319337,"lng":-2.2846281,"cuisine":"Indian","hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://www.ahaarindianstreetfood.co.uk/","site":"https://www.ahaarindianstreetfood.co.uk/","menu":"https://www.ahaarindianstreetfood.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T18:36:54.191Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Indian","_stale":false},{"name":"AKA Sushi","area":"Manchester","postcode":"M1 4DZ","phone":null,"lat":53.4793546,"lng":-2.239326,"cuisine":"Japanese","hygiene":5,"kind":"independent","tier":"grey","accredited":false,"gfAvailable":false,"breadth":null,"breadthCount":null,"price":null,"signal":"strong","evidence":"We read the venue’s own menu and did not find gluten-free items.","provenanceSource":"own-site","provenanceUrl":"https://www.akasushi.co.uk/","site":"https://www.akasushi.co.uk/","menu":"https://www.akasushi.co.uk/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-23T06:50:48.670Z","_tier":"grey","_tierLabel":"No GF found","_color":"#6b7680","_rank":4,"_cat":"Japanese / sushi","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M13 9GP","phone":null,"lat":53.4668617248535,"lng":-2.2347240447998,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":18,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:21:12.993Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M13 9PD","phone":null,"lat":53.4589796,"lng":-2.2271925,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":20,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:27:13.434Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M1 5QA","phone":null,"lat":53.472901,"lng":-2.23997,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":2,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:21:22.425Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M1 4GS","phone":null,"lat":53.478449,"lng":-2.239007,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"several","breadthCount":8,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:27:22.388Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M1 2BN","phone":null,"lat":53.4768867492676,"lng":-2.22982311248779,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":20,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:27:38.253Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M3 3RW","phone":null,"lat":53.4795517,"lng":-2.2485489,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":2,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:27:38.296Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M21 9AF","phone":null,"lat":53.4423445,"lng":-2.2766645,"cuisine":"Cafe","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":18,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-09-08T08:09:01.072Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Cafe / breakfast","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M4 3AQ","phone":null,"lat":53.483547,"lng":-2.242017,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"limited","breadthCount":2,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:27:59.913Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false},{"name":"Caffe Nero","area":"Manchester","postcode":"M20 0NR","phone":null,"lat":53.404574,"lng":-2.223505,"cuisine":"Bakery","hygiene":5,"kind":"chain","tier":"blue","accredited":false,"gfAvailable":false,"breadth":"extensive","breadthCount":21,"price":null,"signal":"strong","evidence":"Venue states: “ls please note: although some of our products are made with gluten free” (national brand menu — local branch may vary)","provenanceSource":"national-site","provenanceUrl":"https://caffenerowebsite.blob.core.windows.net/production/data/menus/caffenero_nutrition_allergens-en_GB.pdf","site":"https://caffenero.com","menu":"https://www.caffenero.com/","bookingPlatform":null,"bookingUrl":null,"checked":"2026-08-26T12:22:02.490Z","_tier":"blue","_tierLabel":"GF options","_color":"#1f6feb","_rank":2,"_cat":"Bakery / desserts","_stale":false}];
+const __AREAS = [{"area":"Manchester","total":60,"gf":42},{"area":"Bury","total":13,"gf":6},{"area":"Ruislip","total":7,"gf":5}];
+const __GRAND = 40345;
+function __json(o){ return Promise.resolve(new Response(JSON.stringify(o), {status:200, headers:{'Content-Type':'application/json'}})); }
+const __origFetch = window.fetch.bind(window);
+window.fetch = function(url, opts){
+  try{
+    const u = String(url);
+    if(u.indexOf('/api/venues')>=0){
+      const qi = u.indexOf('?');
+      if(qi<0){ // overview: land already populated with the full real subset
+        return __json({ mode:'overview', areas:__AREAS, totalAreas:__AREAS.length, grandTotal:__GRAND, gold:__SUB, gated:false, email:'' });
+      }
+      const p = new URLSearchParams(u.slice(qi+1));
+      const q = (p.get('q')||'').toLowerCase().trim();
+      const area = (p.get('area')||'').toLowerCase().trim();
+      let V = __SUB;
+      if(area && area!=='all') V = V.filter(v => (v.area||'').toLowerCase().indexOf(area)>=0);
+      if(q) V = V.filter(v => [v.name,v.area,v.postcode,v.cuisine].join(' ').toLowerCase().indexOf(q)>=0);
+      return __json({ venues:V, total:V.length, scope:{ q:p.get('q')||'' } });
+    }
+    if(u.indexOf('/api/')>=0) return __json({ ok:true }); // notify / auth stubs
+  }catch(e){}
+  return __origFetch(url, opts);
+};
+</script>
+
+<header>
+  <div class="logo">
+    <span class="shield"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.5 8.8-8 11-4.5-2.2-8-6-8-11V5l8-3z" fill="#fff" opacity=".25"/><path d="M8.5 12.3l2.4 2.4 4.8-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    Gluten<span class="uk">Safe</span>&nbsp;UK
+  </div>
+  <div class="tag">Helping you find places you can <b style="color:var(--teal)">safely eat gluten free</b></div>
+  <div class="hspace">
+    <div class="views" id="views">
+      <button data-v="list">List</button><button data-v="split" class="on">Split</button><button data-v="map">Map</button>
+    </div>
+    <a class="claim" href="/claim.html">Own a venue? Claim it</a>
+    <span class="whoami" id="whoami" style="display:none"></span>
+    <button class="signin" id="signinBtn">Sign in</button>
+  </div>
+</header>
+<div class="banner">🔎 <b>4,557 venues</b> · updated 2026-09-01 · every grade is read from the venue's own website. <a class="howlink" href="/how-we-rate.html">How we rate →</a></div>
+<div class="wrap">
+  <div id="list"><div class="inner">
+    <div class="hero">
+      <h1>Find somewhere you can actually trust.</h1>
+      <p>3806 venues assessed from first-party evidence — never guesswork.</p>
+    </div>
+    <div class="filters">
+      <input class="search" id="q" placeholder="Search a town, postcode, place or cuisine…" autocomplete="off">
+      <select class="search cuisine" id="cuisine">
+        <option value="all">🍽 Any cuisine</option>
+        <option value="Italian / pizza">Italian / pizza (75)</option><option value="Indian">Indian (63)</option><option value="Cafe / breakfast">Cafe / breakfast (53)</option><option value="Pub">Pub (36)</option><option value="Chinese">Chinese (22)</option><option value="British">British (20)</option><option value="Burgers / fast food">Burgers / fast food (20)</option><option value="Chicken">Chicken (20)</option><option value="Bakery / desserts">Bakery / desserts (15)</option><option value="Fish & chips">Fish & chips (12)</option><option value="Turkish / kebab">Turkish / kebab (11)</option><option value="Japanese / sushi">Japanese / sushi (7)</option><option value="Thai">Thai (4)</option><option value="Greek">Greek (3)</option><option value="Middle Eastern">Middle Eastern (3)</option><option value="Bubble tea / drinks">Bubble tea / drinks (1)</option><option value="Other">Other (4192)</option>
+      </select>
+      <div class="row" id="fNear">
+        <span class="chip" id="nearBtn">📍 Near me</span>
+        <span class="radius" id="radius" style="display:none"><span class="rlbl">Within</span>
+          <span class="rchip" data-r="area">This area</span>
+          <span class="rchip on" data-r="5">5 mi</span>
+          <span class="rchip" data-r="10">10 mi</span>
+          <input id="rInput" class="rnum" type="number" min="1" max="15" placeholder="mi" inputmode="numeric">
+        </span>
+      </div>
+      <div class="row" id="fTier">
+        <div class="ftitle">Show me places that are…</div>
+        <span class="chip on" data-tier="all">All</span>
+        <span class="chip" data-tier="gold"><span class="sw" style="background:#b8860b"></span>Accredited</span><span class="chip" data-tier="green"><span class="sw" style="background:#1a7f37"></span>Coeliac provision</span><span class="chip" data-tier="blue"><span class="sw" style="background:#1f6feb"></span>GF options</span><span class="chip" data-tier="amber"><span class="sw" style="background:#e5a100"></span>Caution</span><span class="chip" data-tier="grey"><span class="sw" style="background:#6b7680"></span>No GF found</span><span class="chip" data-tier="unread"><span class="sw" style="background:#8a63d2"></span>Menu not readable</span>
+      </div>
+    </div>
+    <div class="count" id="count"></div>
+    <div id="cards"></div>
+  </div></div>
+  <div id="map"></div>
+</div>
+<button id="fab">🗺 Map</button>
+<div class="modal" id="signinModal">
+  <div class="box">
+    <button class="x" id="signinClose">×</button>
+    <h2>See every venue — free</h2>
+    <p>GlutenSafe is free. Pop in your email to unlock the full list and map, and we'll remember you next time.</p>
+    <input type="email" id="signinEmail" placeholder="you@example.com" autocomplete="email">
+    <div class="hp"><input type="text" id="signinHp" tabindex="-1" autocomplete="off"></div>
+    <label class="consent"><input type="checkbox" id="signinMarketing"> <span>Also send me <b>Gluten Science Weekly</b> — a short evidence-based email (optional, unsubscribe anytime).</span></label>
+    <button class="go" id="signinGo">Continue</button>
+    <div class="err" id="signinErr" style="display:none"></div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+let V = [];
+// First load fetches the OVERVIEW (area index + counts + the 2 accredited venues) — never the
+// whole dataset. Signed-out visitors get a 2-venue preview. Actual venues load one scope at a
+// time (area / search / near-me) so no single request can pull the full set. See loadScope().
+fetch('/api/venues',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(d=>{
+  window.__gated=!!d.gated;window.__email=d.email||'';
+  if(d.mode==='overview'){
+    window.__areas=d.areas||[];window.__grand=d.grandTotal||0;window.__total=d.grandTotal||0;
+    window.__gold=d.gold||[];V=window.__gold.slice();
+  }else{ // gated preview (signed out) or a legacy full payload
+    window.__areas=[];window.__gold=[];V=d.venues||[];window.__total=d.total||V.length;
+  }
+  // tidy the ?signedin=1 marker left by the magic-link redirect
+  if(location.search.indexOf('signedin=1')>=0&&history.replaceState)history.replaceState(null,'',location.pathname);
+  boot();}).catch(function(e){console.error(e);var l=document.getElementById('list');if(l)l.innerHTML='<p style="padding:20px">Couldn\'t load venue data — please refresh.</p>';});
+function boot(){
+const map = L.map('map',{zoomControl:true}).setView([53.0,-1.5],6);
+// Keyless basemap — CARTO's light_all now demands an API key (serves an "API KEY REQUIRED"
+// watermark otherwise), so we use standard OpenStreetMap tiles, which are free and keyless.
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap contributors', subdomains:'abc', maxZoom:19}).addTo(map);
+// Cluster the pins — with ~800 venues, individual markers choke phones. Clusters keep it
+// smooth and expand to real pins as you zoom in.
+const cluster=L.markerClusterGroup({maxClusterRadius:45,spiderfyOnMaxZoom:true,chunkedLoading:true});
+map.addLayer(cluster);
+const byKey={};
+const state={area:'all',tier:'all',cat:'all',q:'',near:null,radius:'5',_center:null,_placePick:null};
+let lastPts=[];
+// A typed UK postcode (full or outward part) triggers a radius search server-side; we detect it
+// here too so we can show the radius control. Needs at least one digit so plain words don't match.
+function isPostcode(t){t=String(t||'').trim();return /\d/.test(t)&&/^[a-z]{1,2}\d[a-z\d]?(\s*\d[a-z]{0,2})?$/i.test(t);}
+let _rTimer=null;
+// --- Scoped loading. The server ships one slice at a time (area / search / near), never the
+// whole set. tier & cuisine filters stay client-side over whatever slice is loaded. A sequence
+// guard drops stale responses if the user keeps typing. ---
+let _seq=0,_qTimer=null;
+function areaMatch(term){
+  term=String(term||'').toLowerCase().trim();if(term.length<2)return null;
+  return (window.__areas||[]).map(a=>a.area).find(a=>{const al=a.toLowerCase();return al===term||al.indexOf(term)>=0||term.indexOf(al)>=0;})||null;
+}
+function loadScope(params){
+  const my=++_seq;
+  const cc=document.getElementById('count');if(cc)cc.innerHTML='<b>Loading…</b>';
+  const qs=new URLSearchParams(params).toString();
+  return fetch('/api/venues?'+qs,{credentials:'same-origin',cache:'no-store'})
+    .then(r=>r.json().then(j=>({s:r.status,j:j}),()=>({s:r.status,j:{}})))
+    .then(o=>{
+      if(my!==_seq)return; // superseded by a newer request
+      if(o.s===429){V=[];render();const c=document.getElementById('count');if(c)c.innerHTML='<b>Slow down a moment</b> — too many searches; please try again shortly.';return;}
+      // Ambiguous place name (several UK "Westfield"s we cover) -> the server returns choices; show
+      // a picker instead of a venue list. The user taps one, which re-queries as a radius search.
+      if(o.j&&o.j.mode==='places'&&Array.isArray(o.j.choices)&&o.j.choices.length){renderPlaceChoices(o.j.choices,(o.j.scope&&o.j.scope.q)||state.q);return;}
+      V=(o.j&&o.j.venues)||[];
+      // If the server did a radius search (Near me or a geocoded postcode) it echoes the centre;
+      // capture it so cards can show distance + sort nearest-first even for a postcode search.
+      const nc=o.j&&o.j.scope&&o.j.scope.near;
+      if(nc){const p=String(nc).split(',').map(Number);state._center=isFinite(p[0])?{lat:p[0],lng:p[1]}:null;}else{state._center=null;}
+      // A text query the server resolved to a PLACE (shopping centre / town) comes back as a radius
+      // search with scope.place set. Remember the resolved name and reveal the radius control so the
+      // user can widen the search, exactly like a postcode search.
+      state._placeLabel=(o.j&&o.j.scope&&o.j.scope.place)||null;
+      if(state._placeLabel&&!state.near)showRadius();
+      render();
+      if(state._placeLabel){const cc2=document.getElementById('count');if(cc2)cc2.innerHTML+=' · near <b>'+esc(state._placeLabel)+'</b>';}
+    }).catch(()=>{if(my===_seq){V=[];render();}});
+}
+// Reset to the landing: the 2 accredited venues + a "pick an area or search" prompt.
+function showOverview(){state.area='all';state.q='';state.near=null;state._placePick=null;V=(window.__gold||[]).slice();_seq++;render();}
+// Ambiguous-place picker: the server sent >1 covered candidate for a place name; let the user
+// choose rather than guessing. Tapping a choice re-queries as a radius search around it.
+function renderPlaceChoices(choices,q){
+  state._center=null;state._placeLabel=null;state._placePick=null;window.__placeChoices=choices;
+  const cc=document.getElementById('count');
+  if(cc)cc.innerHTML='<b>More than one “'+esc(q)+'”</b> — which did you mean?';
+  document.getElementById('cards').innerHTML='<div class="places">'+choices.map((c,i)=>
+    '<button class="placeopt" data-i="'+i+'"><span class="pl">'+esc(c.label)+'</span>'+
+    '<span class="pc">'+c.count+' venue'+(c.count===1?'':'s')+' nearby</span></button>').join('')+'</div>';
+  cluster.clearLayers();lastPts=[];
+}
+function pickPlace(i){
+  const c=(window.__placeChoices||[])[i];if(!c)return;
+  state.near=null;state._placePick={lat:c.lat,lng:c.lng,name:c.name};
+  state.q=c.name;const qi=document.getElementById('q');if(qi)qi.value=c.name;
+  state.area='all';showRadius();
+  loadScope({near:c.lat+','+c.lng,radius:state.radius==='area'?'area':state.radius,place:c.name});
+}
+// --- List ⇄ Split ⇄ Map toggle. Desktop defaults to split; phones default to list with a
+// floating switch (the split view has no room on a phone).
+const isDesktop=matchMedia('(min-width:900px)').matches;
+function setView(v){
+  document.body.className='v-'+v;
+  document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  const fab=document.getElementById('fab');
+  fab.textContent=v==='map'?'📋 List':'🗺 Map';
+  if(v!=='list'){setTimeout(()=>{map.invalidateSize();if(lastPts.length)map.fitBounds(lastPts,{padding:[40,40],maxZoom:13});},60);}
+}
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+document.getElementById('fab').onclick=()=>setView(document.body.className==='v-map'?'list':'map');
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// FHRS food-hygiene rating -> coloured badge. Numeric 0–5 gets "Hygiene N/5";
+// Awaiting/Exempt shown honestly; missing (chains) shows nothing.
+function hygBadge(h){
+  const s=String(h==null?'':h);
+  if(/^[0-5]$/.test(s)) return '<span class="hyg h'+s+'" title="Food Standards Agency food-hygiene rating">Hygiene '+s+'/5</span>';
+  if(s==='AwaitingInspection') return '<span class="hyg hx" title="FSA hygiene inspection pending">Hygiene: awaiting</span>';
+  if(s==='Exempt') return '<span class="hyg hx" title="FSA hygiene: exempt">Hygiene: exempt</span>';
+  return '';
+}
+function hygPin(h){const s=String(h==null?'':h);return /^[0-5]$/.test(s)?s:'';}
+// "Checked Aug 2026" freshness stamp (month only, per Luke #2).
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function checkedLabel(iso){const d=iso?new Date(iso):null;return d&&!isNaN(d)?'Checked '+MON[d.getMonth()]+' '+d.getFullYear():'';}
+// Coeliac UK accreditation badge (Luke #1) — only when the venue's own evidence states it.
+// Show the ✔ Accredited pill only on NON-gold rows — a gold venue's tier badge already reads
+// "Accredited", so firing this too would double-badge it (Bill's, spotted 20-Aug).
+function accredBadge(v){return (v.accredited&&v._tier!=='gold')?'<span class="accred" title="Venue states Coeliac UK / GF accreditation">✔ Accredited</span>':'';}
+// Haversine distance in miles between two lat/lng points (for "Near me" sort).
+function distMi(aLat,aLng,bLat,bLng){
+  const R=3958.8,toR=x=>x*Math.PI/180;
+  const dLat=toR(bLat-aLat),dLng=toR(bLng-aLng);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(aLat))*Math.cos(toR(bLat))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+}
+function distLabel(mi){return mi==null?'':(mi<0.1?'<0.1 mi':mi.toFixed(mi<10?1:0)+' mi');}
+// Evidence display (ported from build-site.mjs, Luke 2/3-Sep + regression fix 8-Sep): the
+// "In the venue's own words" heading is reserved for a GENUINE verbatim venue quote on the
+// tiers where the venue makes a real spoken claim (gold/green/amber). Our own narration
+// ("We read the venue's own menu…", or a line that merely restates the tier badge) must NOT
+// wear that label. Blue's signal is a menu tag/legend, not a statement — ~95% of the scraped
+// "Venue states: …" quotes there are junk fragments (a beer list, a truncated FAQ — Ascot's
+// "peroni gluten free", Itsu's "ns & vegans will be labelled…"), so blue NEVER gets a quote;
+// it shows a clean source-aware fact line instead (blueEv).
+const _EV_STRIP=/^(Venue(?:’s| own)?[^:]*states:|Venue’s own allergen guide states:)\s*/i;
+const _EV_WRAP=/^[“"'«»\s]+|[”"'«»\s]+$/g;
+const _EV_REDUNDANT=/^(we read the venue|full menu read found no|gluten-free items?\s*(are\s+)?(listed\s+)?on the venue[’']s own menu|venue lists a dedicated gluten-free menu|the venue[’']s own website states a dedicated)/i;
+const _EV_SOURCE=/deliveroo|just eat|coeliac uk accredited|interactive allergen filter|dishes marked/i;
+const _EV_TRIGGER=/gluten[- ]?free|\bgfo?\b|\bgfa\b|\bngci\b|coeliac|celiac/gi;
+function _evQuote(raw){
+  const m=raw.match(/states:\s*[“"'«]([^”"»]+)[”"»]?/i)||raw.match(/^[“"'«]([^”"»]+)[”"»]$/);
+  if(m)return m[1].trim();
+  if(!_EV_REDUNDANT.test(raw)&&!_EV_SOURCE.test(raw)&&!/^we\b/i.test(raw))return raw.replace(_EV_STRIP,"").replace(_EV_WRAP,"").trim();
+  return null;
+}
+function _evThin(q){return q.replace(_EV_TRIGGER,"").replace(/[^a-z]/gi,"").length<3;}
+function evidenceBlock(v){
+  const raw=(v.evidence||"").trim();
+  const natnote=(v.provenanceSource==="national-site")?"<div class='natnote'>ℹ️ Assessed from the chain's <b>national</b> menu — local branches may vary.</div>":"";
+  if(!raw)return natnote;
+  const quoteTier=(v._tier==='gold'||v._tier==='green'||v._tier==='amber');
+  if(quoteTier){
+    const q=_evQuote(raw);
+    if(q&&!_evThin(q))return "<span class='hd'>In the venue's own words</span><span class='ev'>"+esc(q)+"</span>"+natnote;
+  }
+  if(_EV_SOURCE.test(raw))return "<span class='evsrc'>"+esc(raw)+"</span>"+natnote;
+  return natnote; // narration / thin trigger-word — the tier badge already carries the finding
+}
+// Blue = "GF options listed": no venue statement to quote, so show a plain, source-aware fact
+// line rather than a scraped fragment under a "their own words" heading.
+function blueEv(v){
+  const natnote=(v.provenanceSource==="national-site")?"<div class='natnote'>ℹ️ Assessed from the chain's <b>national</b> menu — local branches may vary.</div>":"";
+  const deliveroo=/deliveroo/i.test(v.provenanceSource||'')||/deliveroo/i.test(v.evidence||'');
+  const line=deliveroo?"Gluten-free items marked on the venue’s Deliveroo menu.":"Gluten-free items marked on the venue’s own menu.";
+  return "<span class='evsrc'>"+line+"</span>"+natnote;
+}
+function signalsHtml(v){
+  const ev=evidenceBlock(v);
+  const verify='<div class="verify">Based on the venue\'s own statements — always confirm your needs with staff before eating.</div>';
+  // Staleness: fade + warn once the check is >6 months old (green/gold only — the tiers that
+  // imply provision the venue could have quietly dropped since we looked).
+  const stale=v._stale?'<div class="stale">⏳ This was checked over 6 months ago — the information may be out of date.</div>':'';
+  if(v._tier==='gold'){
+    return '<div class="signals gold"><b>★ Accredited</b> — the venue states a current coeliac accreditation (e.g. Coeliac UK / GF Guild), the highest trust level.'+ev+stale+verify+'</div>';
+  }
+  if(v._tier==='green'){
+    return '<div class="signals"><b>✓ Venue states dedicated coeliac provision</b> (dedicated GF/NGCI menu plus a cross-contamination measure) — <b>not independently verified</b>.'+ev+stale+verify+'</div>';
+  }
+  if(v._tier==='amber'){
+    return '<div class="signals amber"><b>⚠ Caution — shared-kitchen warning.</b> The venue offers GF but its own wording flags a cross-contamination risk (e.g. a shared fryer). Not suitable for some coeliacs — check carefully.'+ev+verify+'</div>';
+  }
+  if(v._tier==='grey'){
+    return '<div class="signals grey"><b>Assessed — no gluten-free provision found.</b> We checked this venue and did not find gluten-free options — we can at least save you looking. Menus change — worth a call to be sure.'+ev+'</div>';
+  }
+  if(v._tier==='unread'){
+    return '<div class="signals unread"><b>Menu not readable yet.</b> We found the venue’s own website but couldn’t read its menu automatically — it loads through an ordering app, a PDF, or an image. This is <b>not</b> a judgement either way; call the venue to check its gluten-free provision.'+ev+'</div>';
+  }
+  if(v._tier==='unassessed'){
+    return '<div class="signals unassessed"><b>Not yet assessed.</b> We haven’t confirmed a website for this venue, so we can’t grade its gluten-free provision. Worth a call to check directly.'+ev+'</div>';
+  }
+  return '<div class="signals blue"><b>GF options available</b> — gluten-free dishes on offer, but the venue makes <b>no dedicated coeliac-provision claim</b>. Cross-contamination not confirmed.'+blueEv(v)+verify+'</div>';
+}
+// Breadth of GF choice (Luke 18-Aug) — "lots of options" vs "one dish". Shown as a small pill
+// next to the tier. Prefer the first-party distinct-dish count when we have one; else the band.
+function breadthBadge(v){
+  const L={extensive:'Extensive GF',several:'Several GF',limited:'Limited GF','dedicated-gf-menu':'Dedicated GF menu','menu-allergen-key':'GF-marked menu'};
+  const n=(v.breadthCount!=null&&v.breadthCount>0)?' · '+v.breadthCount+' dish'+(v.breadthCount===1?'':'es'):'';
+  let label=L[v.breadth], cls=v.breadth;
+  if(!label){
+    // unrecognised/missing band — fall back to a count-derived pill so a known dish count always shows
+    if(!(v.breadthCount>0)) return '';
+    label=(v.breadthCount>=10?'Extensive GF':v.breadthCount>=4?'Several GF':'Limited GF');
+    cls=(v.breadthCount>=10?'extensive':v.breadthCount>=4?'several':'limited');
+  }
+  return ' <span class="bbadge b-'+cls+'" title="How much gluten-free choice the venue\'s own menu lists">'+label+n+'</span>';
+}
+function tierBadge(v){return '<span class="badge t-'+v._tier+'">'+v._tierLabel+'</span>';}
+function card(v){
+  const menu=v.menu?'<a href="'+esc(v.menu)+'" target="_blank" rel="noopener">Menu</a>':'';
+  const site=v.site?'<a href="'+esc(v.site)+'" target="_blank" rel="noopener">Website</a>':'';
+  const phone=v.phone?'<a href="tel:'+esc(v.phone)+'">📞 Call</a>':'';
+  const book=v.bookingUrl?'<a class="book" href="'+esc(v.bookingUrl)+'" target="_blank" rel="noopener">📅 Book a table</a>':'';
+  const chk=checkedLabel(v.checked);
+  const dist=v._dist!=null?'<span class="dist">📍 '+distLabel(v._dist)+'</span>':'';
+  const hrs=v.hours?'<span title="Opening hours">🕑 '+esc(v.hours)+'</span>':'';
+  const meta=(chk||dist||hrs)?'<div class="meta">'+dist+hrs+(chk?'<span>'+chk+'</span>':'')+'</div>':'';
+  const priceTag=v.price?'<span class="price">'+esc(v.price)+'</span>':'';
+  const fade=(v._stale&&(v._tier==='gold'||v._tier==='green'))?' stale':'';
+  return '<div class="card'+fade+'" data-k="'+esc(v.name+'|'+v.postcode)+'">'+
+    '<h3>'+esc(v.name)+' '+tierBadge(v)+accredBadge(v)+hygBadge(v.hygiene)+'</h3>'+
+    '<div class="cuisine">'+esc([v.cuisine,v.area,v.postcode].filter(Boolean).join(' · '))+priceTag+breadthBadge(v)+'</div>'+
+    signalsHtml(v)+
+    '<div class="links">'+site+menu+phone+book+'</div>'+
+    meta+
+  '</div>';
+}
+function pinIcon(v){
+  return L.divIcon({className:'',html:'<div class="pin" style="background:'+v._color+'"><span>'+hygPin(v.hygiene)+'</span></div>',iconSize:[26,26],iconAnchor:[13,26],popupAnchor:[0,-24]});
+}
+// Scroll the left-hand list to a venue's card and highlight it (pin -> entry).
+function selectCard(k){
+  document.querySelectorAll('.card.sel').forEach(c=>c.classList.remove('sel'));
+  const el=document.querySelector('.card[data-k="'+(window.CSS&&CSS.escape?CSS.escape(k):k.replace(/"/g,'\\"'))+'"]');
+  if(el){el.classList.add('sel');el.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+// --- Access gate + "notify me on an area with gaps" (Luke 1-Sep). The gate is enforced
+// server-side: signed out -> /api/venues returns only a 2-venue preview, so the full dataset
+// is never in the page. Sign-in is a magic link (email a one-tap link -> HttpOnly session).
+// A location search that lands on an area we do not cover yet offers a "email me when it is
+// ready" capture via /api/notify (transactional opt-in; the newsletter is a separate box). ---
+const GAP_LIMIT=2;
+const EMAIL_RE=/^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+function GATED(){return !!window.__gated;}
+function postJSON(url,p){return fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)}).then(r=>r.json().then(j=>({ok:r.ok,j}),()=>({ok:r.ok,j:{}})));}
+const postNotify=p=>postJSON('/api/notify',p);
+function whoamiSync(){
+  const w=document.getElementById('whoami'), b=document.getElementById('signinBtn');
+  if(window.__email){w.style.display='';w.innerHTML='✓ '+esc(window.__email)+' · <a id="signoutLink">sign out</a>';b.style.display='none';
+    const so=document.getElementById('signoutLink');if(so)so.onclick=()=>{fetch('/api/auth/logout',{method:'POST',credentials:'same-origin'}).then(()=>location.reload()).catch(()=>location.reload());};
+  }else{w.style.display='none';b.style.display='';}
+}
+function gateCardHtml(total){
+  return '<div class="gate"><h3>Sign in free to unlock all '+total+' venues</h3>'
+   +'<p>You are seeing a 2-venue preview. GlutenSafe is free — add your email and we will send a one-tap sign-in link that unlocks the full UK list and map.</p>'
+   +'<button id="gateBtn">Get my free sign-in link</button></div>';
+}
+function notifyFormHtml(){
+  return '<form id="notifyForm">'
+   +'<input type="email" id="notifyEmail" placeholder="you@example.com" required value="'+esc(window.__email||'')+'">'
+   +'<button type="submit" id="notifyBtn">Notify me</button>'
+   +'<div class="hp"><input type="text" id="notifyHp" tabindex="-1" autocomplete="off"></div>'
+   +'<div class="err" id="notifyErr" style="display:none"></div>'
+   +'<label class="consent"><input type="checkbox" id="notifyMarketing"> <span>Also send me Gluten Science Weekly — a short evidence-based email (optional).</span></label>'
+   +'</form>';
+}
+// Shown when a search lands on an area we do NOT cover yet (few/no results).
+function notifyPanelHtml(area){
+  const a=esc(area);
+  return '<div class="notify" id="notify" data-area="'+a+'"><h3>We do not fully cover \''+a+'\' yet</h3>'
+   +'<p>GlutenSafe is expanding across the UK. Want an email the moment we have assessed venues near <b>'+a+'</b>? We will do the research and send you a link — usually within a couple of hours, always within 24 hours.</p>'
+   +notifyFormHtml()+'</div>';
+}
+// Shown when a search lands on an area we DO cover — coverage is always partial, so make it
+// clear we have not assessed every venue there yet (with the honest count) and offer a "tell me
+// as we add more" opt-in.
+function coverageNoticeHtml(area){
+  const a=esc(area);
+  const s=areaStats(area);
+  const tally=s?'<p class="tally">We have assessed <b>'+s.total+'</b> venue'+(s.total===1?'':'s')+' in '+a+' so far — <b>'+s.gf+'</b> have gluten-free options to review.</p>':'';
+  return '<div class="notify" id="notify" data-area="'+a+'"><h3>We have not assessed every venue in \''+a+'\' yet</h3>'
+   +tally
+   +'<p>These are the venues in <b>'+a+'</b> we have checked so far — we are adding more all the time. Want an email when we have assessed more of '+a+'?</p>'
+   +notifyFormHtml()+'</div>';
+}
+// A free-text search (venue/brand, or a place we may not cover) that returned little or nothing.
+// Deliberately does NOT assert the query is an "area we don't cover" — it may be a venue name.
+// Postcodes are handled separately (notifyPanelHtml); this is the catch-all for everything else.
+function searchGapHtml(term){
+  const t=esc(term);
+  return '<div class="notify" id="notify" data-area="'+t+'" data-mode="search"><h3>Not much for \''+t+'\' yet</h3>'
+   +'<p>If you were searching a <b>place</b>, try a postcode or tap <b>📍 Near me</b>. If it\'s a <b>venue</b>, we may not have assessed it yet — we are adding venues across the UK all the time. Want an email as we add more?</p>'
+   +notifyFormHtml()+'</div>';
+}
+// Landing panel (signed-in, nothing chosen): quick-jump to the best-covered areas + a nudge to
+// search or use near-me. Results load per-scope, so this is the starting point.
+function overviewHtml(){
+  const areas=(window.__areas||[]);
+  const chips=areas.slice(0,12).map(a=>'<button class="areajump" data-jump="'+esc(a.area)+'">'+esc(a.area)+' <span>'+a.gf+' GF</span></button>').join('');
+  return '<div class="notify" id="overview"><h3>Where are you eating?</h3>'
+   +'<p>We cover <b>'+areas.length+'</b> UK areas so far, <b>'+(window.__grand||0)+'</b> venues assessed. Pick an area, search a place or dish, or tap <b>📍 Near me</b> — results load as you go.</p>'
+   +(chips?'<div class="ajwrap">'+chips+'</div>':'')+'</div>';
+}
+// Does the search term denote one of our covered areas? Keys off the OVERVIEW area index (which
+// lists every covered area) — not the loaded slice, which now only holds the current scope.
+function coveredAreaFor(q){
+  q=String(q||'').toLowerCase().trim();
+  if(q.length<2)return null;
+  return (window.__areas||[]).map(a=>a.area).find(a=>{const al=a.toLowerCase();return al===q||al.indexOf(q)>=0||q.indexOf(al)>=0;})||null;
+}
+// The overview record for a covered area (holds total + per-tier + gf counts).
+function areaStats(area){const a=String(area||'').toLowerCase();return (window.__areas||[]).find(x=>x.area.toLowerCase()===a)||null;}
+function wireDynamic(){
+  const gb=document.getElementById('gateBtn');if(gb)gb.onclick=openSignin;
+  document.querySelectorAll('#overview .areajump').forEach(b=>b.onclick=()=>{const a=b.getAttribute('data-jump');const qi=document.getElementById('q');if(qi)qi.value=a;doSearch(a);});
+  const nf=document.getElementById('notifyForm');
+  if(nf)nf.onsubmit=function(ev){
+    ev.preventDefault();
+    if(document.getElementById('notifyHp').value)return; // honeypot
+    const email=document.getElementById('notifyEmail').value.trim();
+    if(!EMAIL_RE.test(email))return;
+    const marketing=document.getElementById('notifyMarketing').checked;
+    const nEl=document.getElementById('notify');
+    const areaName=(nEl&&nEl.getAttribute('data-area'))||state.q.trim()||state.area;
+    const mode=(nEl&&nEl.getAttribute('data-mode'))||'area';
+    const btn=document.getElementById('notifyBtn');btn.disabled=true;btn.textContent='Sending…';
+    postNotify({kind:'area',area:areaName,email:email,marketing:marketing}).then(res=>{
+      const n=document.getElementById('notify');
+      if(res.ok){
+        const okMsg = mode==='search'
+          ? '<div class="ok">✓ You are on the list. We will email '+esc(email)+' as we add more venues across the UK.</div>'
+          : '<div class="ok">✓ You are on the list. We will email '+esc(email)+' the moment '+esc(areaName)+' is ready.</div>';
+        if(n)n.innerHTML=okMsg;
+      }else{
+        const er=document.getElementById('notifyErr');
+        if(er){er.textContent=(res.j&&res.j.error)||'Something went wrong — try again.';er.style.display='';}
+        btn.disabled=false;btn.textContent='Notify me';
+      }
+    }).catch(()=>{
+      const er=document.getElementById('notifyErr');
+      if(er){er.textContent='Network error — try again.';er.style.display='';}
+      btn.disabled=false;btn.textContent='Notify me';
+    });
+  };
+}
+// Sign-in modal (wired once at boot).
+const _modal=document.getElementById('signinModal');
+function openSignin(){const e=document.getElementById('signinErr');e.style.display='none';_modal.classList.add('on');setTimeout(()=>document.getElementById('signinEmail').focus(),50);}
+function closeSignin(){_modal.classList.remove('on');}
+document.getElementById('signinBtn').onclick=openSignin;
+document.getElementById('signinClose').onclick=closeSignin;
+_modal.addEventListener('click',e=>{if(e.target===_modal)closeSignin();});
+document.getElementById('signinGo').onclick=function(){
+  if(document.getElementById('signinHp').value){closeSignin();return;} // honeypot
+  const email=document.getElementById('signinEmail').value.trim();
+  const marketing=document.getElementById('signinMarketing').checked;
+  const err=document.getElementById('signinErr');
+  if(!EMAIL_RE.test(email)){err.textContent='Please enter a valid email.';err.style.display='';return;}
+  const go=this;go.disabled=true;go.textContent='Sending…';
+  postJSON('/api/auth/request',{email:email,marketing:marketing}).then(res=>{
+    if(res.ok){
+      document.querySelector('#signinModal .box').innerHTML=
+        '<button class="x" id="signinClose2">×</button>'
+        +'<h2>Check your email</h2>'
+        +'<p>We have sent a one-tap sign-in link to <b>'+esc(email)+'</b>. Open it on this device to unlock GlutenSafe. The link lasts 30 minutes.</p>'
+        +'<button class="go" id="signinDone">Done</button>';
+      document.getElementById('signinDone').onclick=closeSignin;
+      document.getElementById('signinClose2').onclick=closeSignin;
+    }else{go.disabled=false;go.textContent='Continue';err.textContent=(res.j&&res.j.error)||'Something went wrong — try again.';err.style.display='';}
+  }).catch(()=>{go.disabled=false;go.textContent='Continue';err.textContent='Network error — try again.';err.style.display='';});
+};
+function render(){
+  const q=state.q.toLowerCase().trim();
+  // The SERVER already scoped V to this search / area / near slice (postcode, town, name and
+  // cuisine are all matched server-side). Re-filtering by the query here is what used to hide
+  // valid postcode matches — so we DON'T. We only apply the tier + cuisine refinements
+  // client-side over whatever slice the server returned.
+  const list=V.filter(v=>(state.tier==='all'||v._tier===state.tier)
+    &&(state.cat==='all'||v._cat===state.cat));
+  // Distance: for a radius search (Near me, or a geocoded postcode) stamp each venue's distance
+  // from the centre and sort nearest-first. Otherwise clear it and keep default rank order.
+  const center=state.near||state._center;
+  if(center){
+    list.forEach(v=>{v._dist=v.lat?distMi(center.lat,center.lng,v.lat,v.lng):null;});
+    list.sort((a,b)=>(a._dist==null)-(b._dist==null)||(a._dist-b._dist));
+  }else{
+    list.forEach(v=>{v._dist=null;});
+  }
+  // Access gate is enforced by the SERVER: when signed out, /api/venues only returns a
+  // 2-venue preview (window.__gated=true), so there is no full dataset in the page to hide.
+  // We just render what we were given and add the sign-in prompt.
+  const gated=GATED();
+  // Overview landing: signed-in, nothing chosen yet -> the 2 accredited venues + a "pick an
+  // area / search / near-me" prompt. No dataset is loaded until the visitor picks a scope.
+  const landing=!gated && state.area==='all' && !q && !state.near;
+  let html='';
+  if(landing){
+    html=list.map(card).join('')+overviewHtml();
+  }else{
+    html=list.length?list.map(card).join(''):'<div style="padding:20px;color:#888">No venues match here yet — try a nearby area, or a different search.</div>';
+  }
+  if(gated)html+=gateCardHtml(window.__total||list.length);
+  // Coverage prompts (signed-in only). Two cases:
+  //  • current scope IS a covered area (chip or search) -> "we haven't assessed every venue
+  //    here yet" + the honest count + a "tell me as we add more" opt-in
+  //  • a search that looks like an area we DON'T cover (few/no matches) -> the gap capture
+  // The "we have not assessed every venue in this area yet" coverage banner was removed
+  // (Luke 9-Sep: "remove not scanned this area") — it undersold a covered area. We KEEP the
+  // genuine gap capture: a search that lands on a place we don't cover yet still offers a
+  // "notify me when we're here" opt-in (lead gen), but only for non-covered searches.
+  if(!gated && !landing && !state.near && state.area==='all' && q.length>=2
+     && list.length<=GAP_LIMIT && !coveredAreaFor(q)){
+    // Only a POSTCODE is treated as a genuine location we may not cover yet (the area-gap
+    // capture). Any other free text is a venue/brand or place NAME — never render it as an
+    // "area we don't cover" (that produced the "We do not fully cover 'Wagamamas' yet" bug).
+    if(isPostcode(state.q))html+=notifyPanelHtml(state.q.trim());
+    else html+=searchGapHtml(state.q.trim());
+  }
+  document.getElementById('cards').innerHTML=html;
+  wireDynamic();
+  const c=t=>list.filter(v=>v._tier===t).length;
+  const parts=[];
+  if(c('gold'))parts.push(c('gold')+' accredited');
+  if(c('green'))parts.push(c('green')+' coeliac provision');
+  if(c('blue'))parts.push(c('blue')+' GF options');
+  if(c('amber'))parts.push(c('amber')+' caution');
+  if(c('grey'))parts.push(c('grey')+' no GF found');
+  if(c('unread'))parts.push(c('unread')+' menu not readable');
+  if(c('unassessed'))parts.push(c('unassessed')+' not yet assessed');
+  if(landing){
+    document.getElementById('count').innerHTML='<b>'+(window.__grand||0)+' venues</b> across '+((window.__areas||[]).length)+' UK areas — pick an area or search to begin.';
+  }else{
+    document.getElementById('count').innerHTML='<b>'+list.length+' venues</b> — '+parts.join(', ');
+  }
+  cluster.clearLayers();
+  const pts=[];const ms=[];
+  list.forEach(v=>{
+    if(!v.lat)return;
+    const key=v.name+'|'+v.postcode;
+    const m=L.marker([v.lat,v.lng],{icon:pinIcon(v)});
+    m.bindPopup('<div class="pop"><h4>'+esc(v.name)+'</h4><div class="cx">'+esc(v.cuisine||'')+'</div>'+
+      '<div>'+tierBadge(v)+accredBadge(v)+hygBadge(v.hygiene)+'</div></div>');
+    m.on('click',()=>selectCard(key));   // pin -> scroll to its list entry
+    byKey[key]=m;ms.push(m);pts.push([v.lat,v.lng]);
+  });
+  cluster.addLayers(ms);
+  lastPts=pts;
+  if(pts.length&&document.body.className!=='v-list')map.fitBounds(pts,{padding:[40,40],maxZoom:13});
+}
+// Highlight the active area chip ('all' when nothing/near/search is active).
+function highlightArea(name){document.querySelectorAll('#fArea .chip').forEach(x=>x.classList.toggle('on',(x.dataset.area||'all')===(name||'all')));}
+function clearNear(){state.near=null;state._placePick=null;const nb=document.getElementById('nearBtn');if(nb){nb.classList.remove('on');nb.textContent='📍 Near me';}}
+// Pick an area chip (or a landing quick-jump): loads THAT area's slice from the server.
+function selectArea(name){
+  clearNear();const qi=document.getElementById('q');if(qi)qi.value='';state.q='';
+  if(!name||name==='all'){state.area='all';highlightArea('all');showOverview();return;}
+  state.area=name;highlightArea(name);loadScope({area:name});
+}
+// The radius control (shown for a postcode search or Near me).
+function showRadius(){const r=document.getElementById('radius');if(r)r.style.display='';}
+function hideRadius(){const r=document.getElementById('radius');if(r)r.style.display='none';}
+function radiusParams(base){const p=Object.assign({},base);p.radius=state.radius==='area'?'area':state.radius;return p;}
+// Re-issue the current scope (postcode search or Near me) with the freshly chosen radius.
+function rerunScope(){
+  if(state._placePick){loadScope({near:state._placePick.lat+','+state._placePick.lng,radius:state.radius==='area'?'area':state.radius,place:state._placePick.name});return;}
+  if(state.near){loadScope({near:state.near.lat+','+state.near.lng,radius:state.radius==='area'?'area':state.radius});return;}
+  if(state.q&&isPostcode(state.q)){loadScope(radiusParams({q:state.q}));return;}
+  // A place-resolved text search (e.g. "Westfield") re-issues with the new radius; the server
+  // re-geocodes (cached) and applies it, just like a postcode.
+  if(state.q&&state._placeLabel){loadScope(radiusParams({q:state.q}));return;}
+}
+// Search. A postcode -> radius search around it (control shown). An area name -> that whole area.
+// Anything else -> a server-side text search.
+function doSearch(term){
+  term=String(term||'').trim();clearNear();
+  if(term.length<2){state.q='';state.area='all';hideRadius();showOverview();return;}
+  state.q=term;state.area='all';
+  if(isPostcode(term)){showRadius();loadScope(radiusParams({q:term}));return;}
+  hideRadius();
+  const am=areaMatch(term);
+  loadScope(am?{area:am}:{q:term});
+}
+// Tier chips -> client-side filter over the loaded slice. (Area selection was removed — search
+// is now the only way to scope, per Luke: "if I want to validate an area I'll search it.")
+function wireTier(){document.querySelectorAll('#fTier .chip').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('#fTier .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');state.tier=c.dataset.tier;render();
+});}
+wireTier();
+// Radius control: presets + custom number, both re-run the active scope.
+document.querySelectorAll('#radius .rchip').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('#radius .rchip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');state.radius=c.dataset.r;const ri=document.getElementById('rInput');if(ri)ri.value='';
+  rerunScope();
+});
+document.getElementById('rInput').addEventListener('input',e=>{
+  let v=parseInt(e.target.value,10);
+  if(v>15){v=15;e.target.value='15';}
+  if(v>=1&&v<=15){document.querySelectorAll('#radius .rchip').forEach(x=>x.classList.remove('on'));state.radius=String(v);clearTimeout(_rTimer);_rTimer=setTimeout(rerunScope,450);}
+});
+// Near-me: toggle. First tap asks for location and loads the nearby slice; tap again clears.
+document.getElementById('nearBtn').addEventListener('click',function(){
+  const btn=this;
+  if(state.near){clearNear();hideRadius();showOverview();return;}
+  if(!navigator.geolocation){btn.textContent='📍 No location support';return;}
+  btn.textContent='📍 Locating…';
+  navigator.geolocation.getCurrentPosition(function(p){
+    const qi=document.getElementById('q');if(qi)qi.value='';state.q='';
+    state.near={lat:p.coords.latitude,lng:p.coords.longitude};state.area='all';
+    btn.classList.add('on');btn.textContent='📍 Near me ✓';showRadius();
+    map.setView([state.near.lat,state.near.lng],12);
+    loadScope({near:state.near.lat+','+state.near.lng,radius:state.radius==='area'?'area':state.radius});
+  },function(){btn.textContent='📍 Location blocked';setTimeout(()=>{btn.textContent='📍 Near me';},2500);},{enableHighAccuracy:true,timeout:10000});
+});
+// Debounced search so we don't fire (and quota) a request on every keystroke.
+document.getElementById('q').addEventListener('input',e=>{const val=e.target.value;clearTimeout(_qTimer);_qTimer=setTimeout(()=>doSearch(val),350);});
+document.getElementById('cuisine').addEventListener('change',e=>{state.cat=e.target.value;render();});
+document.getElementById('cards').addEventListener('click',e=>{
+  const opt=e.target.closest('.placeopt');if(opt){pickPlace(parseInt(opt.dataset.i,10));return;}
+  const card=e.target.closest('.card');if(!card||e.target.tagName==='A')return;
+  const m=byKey[card.dataset.k];
+  // in list-only view, jump to the map so the pin reveal is actually visible
+  if(document.body.className==='v-list'&&m)setView(isDesktop?'split':'map');
+  if(m){cluster.zoomToShowLayer(m,()=>m.openPopup());}   // list entry -> reveal & open its pin
+});
+setView(isDesktop?'split':'list');
+whoamiSync();
+render();
+} // end boot()
+</script>
+</body>
+</html>
