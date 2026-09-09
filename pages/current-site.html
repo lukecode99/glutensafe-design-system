@@ -1,0 +1,246 @@
+<!-- @dsCard group="Pages" name="Current live site" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>GlutenSafe UK — design canvas (real site snapshot)</title>
+<style>
+  :root{
+    --ink:#10222b; --muted:#5a6b74; --line:#e3ebee; --bg:#f7fafb; --card:#fff;
+    --teal:#0c7c74; --teal-dark:#075b55;
+    --gold:#b8860b; --gold-bg:#fdf6e3; --gold-line:#f0d98a;
+    --green:#1a7f37; --green-bg:#e9f7ee; --green-line:#c4e8d0;
+    --blue:#1f6feb; --blue-bg:#eaf2fe; --blue-line:#cfe0fb;
+    --amber:#8a5a00; --amber-bg:#fff6e5; --amber-line:#f3dca0;
+    --grey:#6b7680; --grey-bg:#f0f2f4; --grey-line:#e2e4e7;
+    --unread:#5b3a9e; --unread-bg:#f5f1fc; --unread-line:#e0d5f4;
+    --unassessed:#6b7280; --unassessed-bg:#f6f7f9; --unassessed-line:#e6e8ec;
+    --red:#c62828;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:1200}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.3px;white-space:nowrap}
+  .logo .shield{width:30px;height:30px;border-radius:8px;background:var(--teal);display:flex;align-items:center;justify-content:center;flex:none}
+  .logo .shield svg{width:18px;height:18px}
+  .logo .uk{color:var(--teal)}
+  .tag{color:var(--muted);font-size:12px;line-height:1.3}
+  .hspace{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .claim{font-size:12.5px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 11px;white-space:nowrap}
+  .signin{font:inherit;font-size:12.5px;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+  .whoami{font-size:12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .whoami a{color:var(--teal);cursor:pointer;text-decoration:underline}
+  /* Notify-me panel: shown when a search lands on an area we don't fully cover yet. */
+  .notify{border:1.5px solid var(--teal);background:#f2fbfb;border-radius:14px;padding:16px;margin:12px 0}
+  .notify h3{margin:0 0 5px;font-size:15px;color:#0f2f33}
+  .notify p{margin:0 0 11px;font-size:12.5px;color:var(--muted);line-height:1.5}
+  .notify form{display:flex;gap:8px;flex-wrap:wrap}
+  .notify input[type=email]{flex:1;min-width:180px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:14px}
+  .notify button{font:inherit;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:10px;padding:10px 16px;cursor:pointer;white-space:nowrap}
+  .notify button:disabled{opacity:.55;cursor:default}
+  .notify .consent{flex-basis:100%;font-size:11.5px;color:var(--muted);display:flex;align-items:flex-start;gap:6px;margin-top:2px}
+  .notify .ok{font-size:13px;color:var(--green);font-weight:700}
+  .notify .tally{font-size:13px;color:#0f2f33;background:#e6f6f6;border-radius:9px;padding:8px 11px;margin:0 0 10px}
+  .ajwrap{display:flex;flex-wrap:wrap;gap:7px}
+  .areajump{font:inherit;font-size:12.5px;font-weight:600;color:var(--teal)!important;background:#fff!important;border:1.5px solid var(--teal);border-radius:999px;padding:6px 12px;cursor:pointer}
+  .areajump span{color:var(--muted);font-weight:600;font-size:11px}
+  .areajump:hover{background:#eafafa!important}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  /* Free-access gate: a soft sign-in prompt after the first few results. */
+  .gate{border:1.5px dashed var(--teal);background:#f7fbfc;border-radius:14px;padding:18px;margin:14px 0;text-align:center}
+  .gate h3{margin:0 0 6px;font-size:15px;color:#0f2f33}
+  .gate p{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+  .gate button{font:inherit;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:10px;padding:10px 18px;cursor:pointer}
+  /* Sign-in modal */
+  .modal{position:fixed;inset:0;background:rgba(16,34,43,.45);display:none;align-items:center;justify-content:center;z-index:3000;padding:16px}
+  .modal.on{display:flex}
+  .modal .box{background:#fff;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(16,34,43,.3)}
+  .modal h2{margin:0 0 6px;font-size:19px}
+  .modal p{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.5}
+  .modal input[type=email]{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;margin-bottom:10px;box-sizing:border-box}
+  .modal .go{width:100%;font:inherit;font-weight:700;color:#fff;background:var(--teal);border:0;border-radius:10px;padding:12px;cursor:pointer;font-size:15px}
+  .modal .go:disabled{opacity:.55}
+  .modal .consent{font-size:11.5px;color:var(--muted);display:flex;align-items:flex-start;gap:7px;margin:12px 0 4px;text-align:left}
+  .modal .x{float:right;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;border:0;background:none}
+  .modal .err{color:#c0392b;font-size:12px;margin:6px 0 0}
+  /* List ⇄ Split ⇄ Map segmented toggle (Luke 23-Aug). Split is desktop-only. */
+  .views{display:flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .views button{border:0;background:none;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);padding:7px 12px;cursor:pointer}
+  .views button.on{background:var(--teal);color:#fff}
+  .banner{background:#fff;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);padding:7px 16px;line-height:1.45}
+  .banner b{color:var(--ink)}
+  .banner details{display:inline}
+  .banner summary{display:inline;cursor:pointer;color:var(--teal);font-weight:700}
+  .banner .how{margin-top:6px}
+  .wrap{display:flex;height:calc(100vh - 88px)}
+  #list{width:430px;min-width:430px;overflow-y:auto;border-right:1px solid var(--line);background:var(--bg)}
+  #map{flex:1}
+  /* view modes: v-split (desktop default) side-by-side; v-list list only, centred; v-map map only */
+  body.v-list #map{display:none}
+  body.v-list #list{width:100%;min-width:0;border-right:0}
+  body.v-list #list .inner{max-width:680px;margin:0 auto}
+  body.v-map #list{display:none}
+  .hero{padding:20px 16px 4px}
+  .hero h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.4px;line-height:1.2}
+  .hero p{margin:5px 0 0;font-size:13px;color:var(--muted)}
+  .filters{padding:12px 16px;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--line)}
+  .filters .row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px}
+  .search{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;font-size:14px;margin-bottom:8px;background:#fff;box-shadow:0 2px 8px rgba(16,34,43,.04)}
+  .search:focus{outline:none;border-color:var(--teal)}
+  select.cuisine{background:#fff;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%235f6368"/></svg>');background-repeat:no-repeat;background-position:right 12px center}
+  .hyg{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:5px;color:#fff}
+  .hyg.h5{background:#1a7f37}.hyg.h4{background:#4c9a2a}.hyg.h3{background:#c9a227}.hyg.h2,.hyg.h1,.hyg.h0{background:#c62828}
+  .hyg.hx{background:#9aa0a6}
+  .card.sel{box-shadow:inset 3px 0 0 var(--teal),0 1px 6px rgba(16,34,43,.06);background:#f2f9f8}
+  .accred{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;vertical-align:middle;margin-left:5px;color:#7a5b00;background:var(--gold-bg);border:1px solid var(--gold-line)}
+  .meta{color:var(--muted);font-size:11.5px;margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .meta .dist{color:var(--teal-dark);font-weight:700}
+  .ftitle{width:100%;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:2px 0 -2px}
+  .radius{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .radius .rlbl{font-size:12px;font-weight:600;color:var(--muted)}
+  .rchip{font-size:12px;font-weight:600;padding:5px 9px;border:1.5px solid var(--line);border-radius:16px;background:#fff;color:var(--muted);cursor:pointer;user-select:none}
+  .rchip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .rnum{width:52px;font:inherit;font-size:12px;padding:4px 7px;border:1.5px solid var(--line);border-radius:16px;text-align:center}
+  .chip{font-size:12.5px;font-weight:600;padding:6px 11px;border:1.5px solid var(--line);border-radius:20px;background:#fff;color:var(--muted);cursor:pointer;user-select:none}
+  .chip.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .chip .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .count{font-size:12px;color:var(--muted);padding:10px 16px 0}
+  .count b{color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;margin:10px 12px;padding:14px 15px;cursor:pointer;box-shadow:0 1px 6px rgba(16,34,43,.04)}
+  .card:hover{border-color:#cfdde2}
+  /* Ambiguous-place picker ("which Westfield did you mean?") */
+  .places{padding:6px 12px}
+  .placeopt{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;margin:8px 0;padding:13px 15px;cursor:pointer;font:inherit;box-shadow:0 1px 6px rgba(16,34,43,.04)}
+  .placeopt:hover{border-color:var(--teal);background:#f2fbfb}
+  .placeopt .pl{font-weight:600;font-size:15px;letter-spacing:-.2px}
+  .placeopt .pc{color:#5b7078;font-size:13px;white-space:nowrap}
+  .card h3{margin:0 0 3px;font-size:15.5px;letter-spacing:-.2px}
+  /* Plain-English tier badge — Direction A tinted pill, not a solid block */
+  .badge{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;padding:3px 9px;border-radius:999px;vertical-align:middle}
+  .badge.t-gold{color:var(--gold);background:var(--gold-bg)}
+  .badge.t-green{color:var(--green);background:var(--green-bg)}
+  .badge.t-blue{color:var(--blue);background:var(--blue-bg)}
+  .badge.t-amber{color:var(--amber);background:var(--amber-bg)}
+  .badge.t-grey{color:var(--grey);background:var(--grey-bg)}
+  .badge.t-unread{color:var(--unread);background:var(--unread-bg)}
+  .badge.t-unassessed{color:var(--unassessed);background:var(--unassessed-bg)}
+  .bbadge{display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;vertical-align:middle;background:#eef3ee;color:#1a7f37;border:1px solid #cfe0cf}
+  .bbadge.b-extensive{background:#e6f4ea;color:#1a7f37;border-color:#b8ddc2}
+  .bbadge.b-several{background:#eef3ee;color:#2b7a3f}
+  .bbadge.b-limited{background:#f4f2ec;color:#7a6a2b;border-color:#e2dcc9}
+  .cuisine{color:var(--muted);font-size:12.5px;margin:2px 0 7px}
+  .cuisine .price{color:var(--green);font-weight:700;margin-left:7px}
+  /* Evidence box — the differentiator, styled Direction-A style: left accent bar + tint */
+  .signals{margin-top:9px;font-size:12px;border-left:3px solid var(--green);background:var(--green-bg);border-radius:0 10px 10px 0;padding:8px 11px;color:#20452d}
+  .signals.gold{border-left-color:var(--gold);background:var(--gold-bg);color:#5c4708}
+  .signals.blue{border-left-color:var(--blue);background:var(--blue-bg);color:#1c4d8f}
+  .signals.amber{border-left-color:#e5a100;background:var(--amber-bg);color:var(--amber)}
+  .signals.grey{border-left-color:#9aa0a6;background:var(--grey-bg);color:#4c545c}
+  .signals.unread{border-left-color:#8a63d2;background:var(--unread-bg);color:var(--unread)}
+  .signals.unassessed{border-left-color:#c0c4cc;background:var(--unassessed-bg);color:var(--unassessed)}
+  .signals .hd{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;opacity:.85}
+  .signals .ev{display:block;margin-top:4px;font-style:italic;opacity:.85}
+  .signals .evsrc{display:block;margin-top:4px;font-size:11px;color:#5a6a8a}
+  .signals .stale{margin-top:5px;font-size:11px;font-weight:700;color:#8a5a00}
+  .signals .natnote{margin-top:5px;font-size:11px;font-weight:600;color:#5a6a8a}
+  .verify{margin-top:5px;font-size:11px;opacity:.75}
+  .card.stale{opacity:.62}
+  .card.stale .badge{filter:grayscale(.35)}
+  .links{margin-top:9px;display:flex;gap:7px;flex-wrap:wrap}
+  .links a{font-size:12px;font-weight:600;text-decoration:none;color:var(--teal-dark);border:1px solid var(--line);background:#fff;padding:4px 10px;border-radius:8px}
+  .links a.book{color:#fff;background:var(--teal);border-color:var(--teal)}
+  .leaflet-popup-content{margin:11px 13px;font-family:inherit}
+  .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .pin span{transform:rotate(45deg);display:block;text-align:center;line-height:22px;color:#fff;font-weight:800;font-size:11px}
+  .pop h4{margin:0 0 4px;font-size:15px}
+  .pop .cx{color:var(--muted);font-size:12px;margin-bottom:5px}
+  .legend{margin:8px 0 0;padding:0;list-style:none}
+  .legend li{display:flex;gap:8px;align-items:flex-start;margin-top:5px}
+  .legend .sw2{width:10px;height:10px;border-radius:50%;flex:none;margin-top:3px}
+  /* Floating list/map switch for phones (header toggle is cramped there) */
+  #fab{display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:1300;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.3);cursor:pointer}
+  @media(max-width:899px){
+    .views{display:none}
+    .tag{display:none}
+    .claim{font-size:11.5px;padding:5px 9px}
+    #fab{display:block}
+    .wrap{height:auto}
+    body.v-split #map{display:none}
+    body.v-split #list,#list{width:100%;min-width:0;border-right:0}
+    body.v-map .wrap{height:calc(100vh - 88px)}
+    body.v-map #map{display:block}
+    .hero h1{font-size:20px}
+  }
+</style>
+</head>
+<body class="v-split">
+<header>
+  <div class="logo">
+    <span class="shield"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.5 8.8-8 11-4.5-2.2-8-6-8-11V5l8-3z" fill="#fff" opacity=".25"/><path d="M8.5 12.3l2.4 2.4 4.8-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    Gluten<span class="uk">Safe</span>&nbsp;UK
+  </div>
+  <div class="tag">Helping you find places you can <b style="color:var(--teal)">safely eat gluten free</b></div>
+  <div class="hspace">
+    <div class="views" id="views"><button data-v="list">List</button><button data-v="split" class="on">Split</button><button data-v="map">Map</button></div>
+    <a class="claim" href="#">Own a venue? Claim it</a>
+    <button class="signin">Sign in</button>
+  </div>
+</header>
+<div class="banner">🔎 <b>4,557 venues</b> · updated 2026-09-01 · every grade is read from the venue's own website. <a class="howlink" href="#">How we rate →</a></div>
+<div class="wrap">
+  <div id="list"><div class="inner">
+<div class="hero"><h1>Find somewhere you can actually trust.</h1><p>3806 venues assessed from first-party evidence — never guesswork.</p></div>
+<div class="filters">
+  <input class="search" placeholder="Search a town, postcode, place or cuisine…">
+  <select class="search cuisine"><option>🍽 Any cuisine</option><option>Italian / pizza (75)</option><option>Indian (63)</option><option>Cafe / breakfast (53)</option></select>
+  <div class="row"><span class="chip">📍 Near me</span></div>
+</div>
+<div class="card">
+  <h3>The Gluten-Free Kitchen <span class="badge t-gold">Accredited</span><span class="badge t-accred">◆ Coeliac UK</span><span class="hyg h5">5</span></h3>
+  <div class="cuisine">Italian / pizza · Deansgate, Manchester · M3 4EN<span class="bbadge b-ext">Extensive GF</span></div>
+  <div class="signals gold"><b>★ Accredited</b> — the venue states a current coeliac accreditation (e.g. Coeliac UK / GF Guild), the highest trust level. <span class="evsrc">Source: venue website · verified 4 Sep 2026</span></div>
+  <div class="links"><a class="lk book" href="#">Book</a><a class="lk" href="#">Menu</a><a class="lk" href="#">Call</a></div>
+  
+</div>
+<div class="card">
+  <h3>Sage &amp; Stone Bistro <span class="badge t-green">Coeliac provision</span><span class="hyg h5">5</span></h3>
+  <div class="cuisine">British · Bury · BL9 0BW<span class="bbadge b-ext">Extensive GF</span></div>
+  <div class="signals"><b>✓ Venue states dedicated coeliac provision</b> (dedicated GF/NGCI menu plus a cross-contamination measure) — <b>not independently verified</b>. <span class="evsrc">Source: venue website · read 2 Sep 2026</span></div>
+  <div class="links"><a class="lk" href="#">Menu</a><a class="lk" href="#">Call</a></div>
+  
+</div>
+<div class="card">
+  <h3>Corner Coffee Co. <span class="badge t-blue">GF options</span><span class="hyg h4">4</span></h3>
+  <div class="cuisine">Cafe / breakfast · Ruislip · HA4 7AL<span class="bbadge b-some">Some GF</span></div>
+  <div class="signals blue"><b>GF options available</b> — gluten-free dishes on offer, but the venue makes <b>no dedicated coeliac-provision claim</b>. Cross-contamination not confirmed.</div>
+  <div class="links"><a class="lk" href="#">Menu</a><a class="lk" href="#">Call</a></div>
+  
+</div>
+<div class="card">
+  <h3>The Old Mill Tavern <span class="badge t-amber">Caution</span><span class="hyg h3">3</span></h3>
+  <div class="cuisine">Pub · Rochdale · OL16 1PQ</div>
+  <div class="signals amber"><b>⚠ Caution — shared-kitchen warning.</b> The venue offers GF but its own wording flags a cross-contamination risk (e.g. a shared fryer). Not suitable for some coeliacs — check carefully.</div>
+  <div class="links"><a class="lk" href="#">Menu</a><a class="lk" href="#">Call</a></div>
+  
+</div>
+<div class="card">
+  <h3>Bella Napoli <span class="badge t-unread">Menu not readable</span></h3>
+  <div class="cuisine">Italian / pizza · Salford · M50 3AZ</div>
+  <div class="signals unread"><b>Menu not readable yet.</b> We found the venue's own website but couldn't read its menu automatically — it loads through an ordering app, a PDF, or an image. This is <b>not</b> a judgement either way; call the venue to check its gluten-free provision.</div>
+  <div class="links"><a class="lk" href="#">Website</a><a class="lk" href="#">Call</a></div>
+  
+</div>
+<div class="card">
+  <h3>Riverside Chippy <span class="badge t-unassessed">Not yet assessed</span></h3>
+  <div class="cuisine">Fish &amp; chips · Prestwich · M25 1AU</div>
+  <div class="signals unassessed"><b>Not yet assessed.</b> We haven't confirmed a website for this venue, so we can't grade its gluten-free provision. Worth a call to check directly.</div>
+  <div class="links"><a class="lk" href="#">Call</a></div>
+  
+</div>
+  </div></div>
+  <div id="map" style="background:linear-gradient(135deg,#dfeff0,#eef6f4);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px">
+  <div style="text-align:center;line-height:1.6">🗺️ Live map (Leaflet) renders here in the app<br><span style="font-size:11px">clustered tier-coloured pins · this is a static design canvas</span></div>
+</div>
+</div>
+</body></html>
