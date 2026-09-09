@@ -1,0 +1,39 @@
+<!-- @dsCard group="Trust Tiers" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../tokens.css">
+<style>
+  .wrap{padding:24px;max-width:520px}
+  h4{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:22px 0 8px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:var(--fw-bold);
+         padding:3px 10px;border-radius:var(--radius-sm);border:1px solid transparent}
+  .badge.t-gold{color:var(--gold);background:var(--gold-bg);border-color:var(--gold-line)}
+  .badge.t-green{color:var(--green);background:var(--green-bg);border-color:var(--green-line)}
+  .badge.t-blue{color:var(--blue);background:var(--blue-bg);border-color:var(--blue-line)}
+  .badge.t-amber{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-line)}
+  .badge.t-grey{color:var(--grey);background:var(--grey-bg);border-color:var(--grey-line)}
+  .badge.t-unread{color:var(--unread);background:var(--unread-bg);border-color:var(--unread-line)}
+  .badge.t-unassessed{color:var(--unassessed);background:var(--unassessed-bg);border-color:var(--unassessed-line)}
+  .note{font-size:11.5px;color:var(--muted);margin:3px 0 0}
+</style></head>
+<body><div class="wrap">
+  <h4>Positive tiers (highest trust first)</h4>
+  <div class="row">
+    <span class="badge t-gold">◆ Accredited</span>
+    <span class="badge t-green">✓ Coeliac provision</span>
+    <span class="badge t-blue">GF options</span>
+  </div>
+  <p class="note">Gold = Coeliac UK accredited, independently audited. Green = venue states a cross-contamination safeguard in its own words. Blue = GF items listed, no safeguard claim.</p>
+
+  <h4>Caution / absence</h4>
+  <div class="row">
+    <span class="badge t-amber">⚠ Caution</span>
+    <span class="badge t-grey">No GF found</span>
+  </div>
+
+  <h4>Unknown states (never a judgement)</h4>
+  <div class="row">
+    <span class="badge t-unread">Menu not readable</span>
+    <span class="badge t-unassessed">Not yet assessed</span>
+  </div>
+  <p class="note">Distinct from "No GF found" — we did not reach a readable menu, so we make no claim either way. Never defaulted to a negative.</p>
+</div></body></html>
